@@ -1,4 +1,7 @@
-package biz.noorlander.batclient.services;
+package biz.noorlander.batclient.services.impl;
+
+import biz.noorlander.batclient.services.EventListener;
+import biz.noorlander.batclient.services.EventService;
 
 import java.util.ArrayList;
 import java.util.List;

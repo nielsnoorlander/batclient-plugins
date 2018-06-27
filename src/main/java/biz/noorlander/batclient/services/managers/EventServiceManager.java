@@ -1,6 +1,6 @@
 package biz.noorlander.batclient.services.managers;
 
-import biz.noorlander.batclient.services.EventServiceImpl;
+import biz.noorlander.batclient.services.impl.EventServiceImpl;
 import biz.noorlander.batclient.services.EventService;
 import biz.noorlander.batclient.services.events.ActionEvent;
 import biz.noorlander.batclient.services.events.HeartbeatEvent;
