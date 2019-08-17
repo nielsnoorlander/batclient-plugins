@@ -38,9 +38,7 @@ public class BatGauge extends JPanel {
 
     public void setValue(int value) {
         this.value = value;
-        if (value >= 0 && value <= progressBar.getMaximum()) {
-            progressBar.setValue(value);
-        }
+        progressBar.setValue(value % (progressBar.getMaximum()));
         progressBar.setString(String.valueOf(value) + unit);
         Color newColor = this.defaultColor;
         for (Map.Entry<Integer, Color> boundary : boundaryMap.entrySet()) {
