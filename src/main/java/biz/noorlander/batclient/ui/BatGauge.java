@@ -8,7 +8,9 @@ import java.util.TreeMap;
 
 public class BatGauge extends JPanel {
 
-    private JProgressBar progressBar;
+	private static final long serialVersionUID = 3148254377785539483L;
+
+	private JProgressBar progressBar;
     private String unit;
     private SortedMap<Integer, Color> boundaryMap;
     private Color defaultColor;
