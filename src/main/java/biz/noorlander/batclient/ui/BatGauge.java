@@ -8,8 +8,10 @@ import java.util.TreeMap;
 
 public class BatGauge extends JPanel {
 
+	/**
+	 * 
+	 */
 	private static final long serialVersionUID = 3148254377785539483L;
-
 	private JProgressBar progressBar;
     private String unit;
     private SortedMap<Integer, Color> boundaryMap;
@@ -40,9 +42,7 @@ public class BatGauge extends JPanel {
 
     public void setValue(int value) {
         this.value = value;
-        if (value >= 0 && value <= progressBar.getMaximum()) {
-            progressBar.setValue(value);
-        }
+        progressBar.setValue(value % (progressBar.getMaximum()));
         progressBar.setString(String.valueOf(value) + unit);
         Color newColor = this.defaultColor;
         for (Map.Entry<Integer, Color> boundary : boundaryMap.entrySet()) {

@@ -30,7 +30,7 @@ public class TickerPlugin extends BatClientPlugin implements BatClientPluginTrig
         clientWin = this.getClientGUI().createBatWindow( "Ticker", 10, 900, 240, 50 );
         clientWin.removeTabAt( 0 );
 
-        resourcesTicker = new BatGauge(new Dimension(240, 50), 29, "s", green);
+        resourcesTicker = new BatGauge(new Dimension(240, 50), 30, "s", green);
         resourcesTicker.addBoundary(24, orange);
         resourcesTicker.addBoundary(27, red);
         clientWin.newTab( "Ticker", resourcesTicker );
