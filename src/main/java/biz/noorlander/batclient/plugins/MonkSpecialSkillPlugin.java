@@ -3,7 +3,11 @@ package biz.noorlander.batclient.plugins;
 import java.awt.Color;
 import java.awt.font.TextAttribute;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -15,37 +19,86 @@ import com.mythicscape.batclient.interfaces.ParsedResult;
 
 import biz.noorlander.batclient.model.MonkSpecialSkill;
 import biz.noorlander.batclient.model.MonkSpecialSkill.SkillBranch;
+import biz.noorlander.batclient.utils.ParsedResultUtil;
 
 public class MonkSpecialSkillPlugin extends BatClientPlugin
 		implements BatClientPluginCommandTrigger, BatClientPluginTrigger, BatClientPluginUtil {
 
+	enum Command {
+		DOSKILL("ms"),
+		COMBO_SELECT("mc"),
+		SHOW_SKILLS("monkskills");
+
+		public final String mudcommand;
+		private Command(String mc) {
+			this.mudcommand = mc;
+		}
+	}
     private Pattern showSkillsPattern;
-    private Pattern monkSpecialSkillPattern;
     private List<MonkSpecialSkill> skills;
+	private String skillCommandPattern;
+	private boolean gatherMonkSkills = false;
+	private SortedMap<String,Integer> skillsTrained;
+	private int comboProgress = 0;
+	private String comboSelected = "fury";
+	private Map<String, List<MonkSpecialSkill>> combos;
 
 	@Override
 	public void clientExit() {
-        System.out.println("--- Loading MonkSpecialSkillPlugin ---");
+        System.out.println("--- Unloading MonkSpecialSkillPlugin ---");
 
 	}
 
 	@Override
 	public ParsedResult trigger(ParsedResult parsedResult) {        
+        String text = parsedResult.getStrippedText().trim();
+        if (text.isEmpty()) {
+        	return null;
+        }
         for (MonkSpecialSkill monkSkill : this.skills) {
-        	ParsedResult skillResult = parseMonkSkill(monkSkill, parsedResult);
+        	ParsedResult skillResult = parseMonkSkill(text, monkSkill, parsedResult);
         	if (skillResult != null) {
         		return skillResult;
         	}
         }
-		return parsedResult;
+        Matcher showSkillsMatcher = showSkillsPattern.matcher(text);
+        boolean matchedSkills = false;
+        while (showSkillsMatcher.find()) {
+        	matchedSkills = true;
+        	System.out.println("MATCHED showSkillsPattern: " + showSkillsMatcher.group(1) + " = " + showSkillsMatcher.group(2));
+        	this.skillsTrained.put(showSkillsMatcher.group(1), Integer.valueOf(showSkillsMatcher.group(2)));
+        	if (this.gatherMonkSkills) {
+        		// Gag it
+        		ParsedResultUtil.gag(parsedResult);
+        	}
+        	if ("winged horse kick".equalsIgnoreCase(showSkillsMatcher.group(1))) {
+        		this.gatherMonkSkills = false;
+        		this.skillsTrained.forEach((name, value) -> System.out.println(">> " + name + " = " + value));
+        	}
+        }
+        if (matchedSkills) {
+        	return parsedResult;
+        }
+		return null;
 	}
 
-	private ParsedResult parseMonkSkill(MonkSpecialSkill monkSkill, ParsedResult parsedResult) {
-        String text = parsedResult.getStrippedText().trim();
+	private ParsedResult parseMonkSkill(String text, MonkSpecialSkill monkSkill, ParsedResult parsedResult) {
 		for (Pattern hitPattern : monkSkill.getHitMessages()) {
 			Matcher matcher = hitPattern.matcher(text);
 			if (matcher.matches()) {
 				parsedResult.addHiliteAttribute(TextAttribute.FOREGROUND, Color.GREEN, 0, text.length());
+				if (this.combos.get(comboSelected).get(comboProgress) == monkSkill) {
+					comboProgress++;
+					if (comboProgress == combos.get(comboSelected).size()) {
+						reportToGui("Combo", comboSelected + " - DONE!");
+						comboProgress = 0;
+					} else {
+						reportToGui("Combo", comboSelected + " - " + comboProgress);
+					}
+				} else {
+					comboProgress = 0;
+					reportToGui("Combo", comboSelected + " - failed");
+				}
 				return parsedResult;
 			}
 		}
@@ -62,9 +115,29 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 	@Override
 	public String trigger(String command) {
 		if ("monkskills".equalsIgnoreCase(command)) {
-			return "grep -i \"(hydra|lion|dragon|wave|falcon|falling|tsunami|avalanche|elder|earthquake|geyser)\" show skills";
+			this.gatherMonkSkills  = true;
+			return this.skillCommandPattern;
+		} else if (command.startsWith(Command.DOSKILL.mudcommand)) {
+			return handleSpecialSkillCommand(command);
+		} else if (command.startsWith(Command.COMBO_SELECT.mudcommand)) {
+			return selectCombo(command);
 		}
 		return command;
+	}
+
+	private String selectCombo(String command) {
+		String combo = command.substring(Command.COMBO_SELECT.mudcommand.length()).trim();
+		if (this.combos.containsKey(combo)) {
+			this.comboSelected = combo;
+			return "@party report Monk combo selected: " + combo;
+		} else {
+			reportToGui("Unknown combo", combo);
+			return "";
+		}
+	}
+	private String handleSpecialSkillCommand(String command) {		
+		return "use '" + this.combos.get(comboSelected).get(comboProgress).getName() 
+				+ "'" + command.substring(Command.DOSKILL.mudcommand.length());
 	}
 
 	@Override
@@ -76,13 +149,20 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 	public void loadPlugin() {
 		loadMonkSpecialSkills();
 		// Pattern to match: | Avalanche slam                 |  76 | Baptize                        |  90 |
-		this.showSkillsPattern = Pattern.compile("^|\\s+([-A-z ]+)\\s+|\\s+([0-9]+)\\s+|\\s+([-A-z ]+)?\\s+|\\s+([0-9]+)?\\s+|$");
+		StringBuilder commandPatternBuilder = new StringBuilder();
+		commandPatternBuilder.append("(");
+		this.skills.forEach(skill -> commandPatternBuilder.append(skill.getName().toLowerCase()).append("|"));
+		commandPatternBuilder.deleteCharAt(commandPatternBuilder.length() - 1).append(")");
+		this.showSkillsPattern = Pattern.compile("[|][ ]+" + commandPatternBuilder.toString() + "[ ]+[|][ ]+([0-9]+)[ ]", Pattern.CASE_INSENSITIVE);
+		this.skillCommandPattern = "grep -i \"" + commandPatternBuilder.toString() + "\" show skills";
 	}
 
 	private void loadMonkSpecialSkills() {
+		this.combos = new HashMap<>();
 		this.skills = new ArrayList<>();
-
 		// Start with the ARMOUR branch skills
+		List<MonkSpecialSkill> armourCombo = new ArrayList<>();
+		this.combos.put("arm", armourCombo);
 		// Tier 1: Falling boulder strike
 		MonkSpecialSkill fbs = new MonkSpecialSkill(1, MonkSpecialSkill.SkillBranch.ARMOUR, "falling boulder strike");
 		fbs.getHitMessages().add(Pattern.compile("^You ball up a fist and drive your elbow down at [-A-z ']+s shoulder, but only bruise the muscle\\.$"));
@@ -92,7 +172,8 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		fbs.getHitMessages().add(Pattern.compile("^You ball up a fist and [*]DRIVE[*] it down onto [-A-z ']+s shoulder, and you feel something shatter!$"));
 		fbs.getMissMessages().add(Pattern.compile("^You ball up a fist and attempt to drive your elbow down hard onto [-A-z ']+, but only score a glancing blow\\.$"));
 		this.skills.add(fbs);
-
+		armourCombo.add(fbs);
+		
 		// Tier 2: Earthquake kick
 		MonkSpecialSkill ek = new MonkSpecialSkill(2, MonkSpecialSkill.SkillBranch.ARMOUR, "earthquake kick");
 		ek.getHitMessages().add(Pattern.compile("^Your first kick knocks [-A-z ']+ backwards, preventing you from hitting with the others\\.$"));
@@ -102,6 +183,7 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		ek.getHitMessages().add(Pattern.compile("^You manage to score five consecutive kicks against [-A-z ']+s body, driving waves of force all through (it|her|him)!$"));
 		ek.getMissMessages().add(Pattern.compile("^You make several quick kicks at Old ogre in rapid succession, but don't get any solid hits\\."));
 		this.skills.add(ek);
+		armourCombo.add(ek);
 
 		// Tier 3:
 		MonkSpecialSkill as = new MonkSpecialSkill(3, MonkSpecialSkill.SkillBranch.ARMOUR, "avalanche slam");
@@ -111,8 +193,11 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		as.getHitMessages().add(Pattern.compile("^You grab [-A-z ']+s right[a-z_]+,  pull it over your shoulder and slam (it|her|him) down, landing on (its|her|his) spine!$"));
 		as.getMissMessages().add(Pattern.compile("^You grab at [-A-z ']+s outstretched limbs, but miss\\.$"));
 		this.skills.add(as);
+		armourCombo.add(ek);
 
 		// MULTITARGET Branch
+		List<MonkSpecialSkill> multiCombo = new ArrayList<>();
+		this.combos.put("mul", multiCombo);
 		// Tier 1:
 		MonkSpecialSkill hfs = new MonkSpecialSkill(1, MonkSpecialSkill.SkillBranch.MULTITARGET, "hydra fang strike");
 		hfs.getHitMessages().add(Pattern.compile("^With each [*]JAB[*] you feel your hand dig deeply between the ribs, halfway down to the wrist!$"));
@@ -123,6 +208,7 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		hfs.getHitMessages().add(Pattern.compile("^Most of your attacks are partially deflected or blocked\\.$"));
 		hfs.getMissMessages().add(Pattern.compile("^You start jabbing your knife-hands rapidly, but [-A-z ']+ backs off and you can't even get started\\.$"));
 		this.skills.add(hfs);
+		multiCombo.add(hfs);
 
 		// Tier 2:
 		MonkSpecialSkill whk = new MonkSpecialSkill(2, MonkSpecialSkill.SkillBranch.MULTITARGET, "winged horse kick");
@@ -136,6 +222,7 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		whk.getHitMessages().add(Pattern.compile("^Your kick is true, but not forceful enough to knock anyone around.$"));
 		whk.getMissMessages().add(Pattern.compile("^You leap up and make a swinging kick, but [-A-z ']+ blocks it and knocks you to the ground\\.$"));
 		this.skills.add(whk);
+		multiCombo.add(whk);
 		
 		// Tier 3:
 		MonkSpecialSkill dts = new MonkSpecialSkill(3, SkillBranch.MULTITARGET, "dragon tail sweep");
@@ -145,8 +232,11 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		dts.getHitMessages().add(Pattern.compile("^You kick both legs out from under [-A-z ']+, who lands on (its|her|his) back with a heavy thud!$"));
 		dts.getMissMessages().add(Pattern.compile("^You drop and sweep your leg low, but [-A-z ']+ braces and blocks it\\.$"));
 		this.skills.add(dts);
+		multiCombo.add(dts);
 		
 		// DEFENSE Branch
+		List<MonkSpecialSkill> defCombo = new ArrayList<>();
+		this.combos.put("def", defCombo);
 		// Tier 1:
 		MonkSpecialSkill fts = new MonkSpecialSkill(1, MonkSpecialSkill.SkillBranch.DEFENSE, "falcon talon strike");
 		fts.getHitMessages().add(Pattern.compile("^You push off of [-A-z ']+s shoulders hard enough to flip over (its|her|his) head, but can't get a decent claw in\\.$"));
@@ -156,6 +246,7 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		fts.getHitMessages().add(Pattern.compile("^You push off [-A-z ']+s shoulders and do a fancy flip, [*]claw[*]ing (it|her|him) across the face on the way over!$"));
 		fts.getMissMessages().add(Pattern.compile("^You attempt to vault over [-A-z ']+, but are pushed back\\.$"));
 		this.skills.add(fts);
+		defCombo.add(fts);
 
 		// Tier 2:
 		MonkSpecialSkill eck = new MonkSpecialSkill(2, MonkSpecialSkill.SkillBranch.DEFENSE, "elder cobra kick");
@@ -163,14 +254,18 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		eck.getHitMessages().add(Pattern.compile("^Your forward flip is a little too late, but you manage to club [-A-z ']+ over the shoulder with the heel of your foot\\.$"));
 		eck.getMissMessages().add(Pattern.compile("^Your forward flip was too early, leaving you flat on your back!$"));
 		this.skills.add(eck);
+		defCombo.add(eck);
 
 		// Tier 3:
 		MonkSpecialSkill ltt = new MonkSpecialSkill(3, MonkSpecialSkill.SkillBranch.DEFENSE, "lions teeths throw");
 		ltt.getHitMessages().add(Pattern.compile("^You fall short, and end up merely kicking (it|her|him) in the face with one foot\\.$"));
 		ltt.getMissMessages().add(Pattern.compile("^You hurl your twisting body feet-first through the air at [-A-z ']+, but fall short and land on your side\\.$"));
 		this.skills.add(ltt);
-		
+		defCombo.add(ltt);
+
 		// CONFUSE Branch
+		List<MonkSpecialSkill> confuseCombo = new ArrayList<>();
+		this.combos.put("con", confuseCombo);
 		// Tier 1:
 		MonkSpecialSkill wcs = new MonkSpecialSkill(1, SkillBranch.CONFUSE, "wave crest strike");
 		wcs.getHitMessages().add(Pattern.compile("^You manage to swat [-A-z ']+ on the neck, but miss the veins you were aiming for\\.$"));
@@ -181,7 +276,7 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		wcs.getHitMessages().add(Pattern.compile("^You can't find a good opening, so you settle for smacking [-A-z ']+ on the side of the head\\.$"));
 		wcs.getMissMessages().add(Pattern.compile("^You try to swat at [-A-z ']+, but can't make flesh contact\\.$"));
 		this.skills.add(wcs);
-		
+		confuseCombo.add(wcs);
 		// Tier 2:
 		MonkSpecialSkill gfk = new MonkSpecialSkill(2, SkillBranch.CONFUSE, "geyser force kick");
 		gfk.getHitMessages().add(Pattern.compile("^You run up [-A-z ']+s chest, stomping hard with both feet, and flip backwards onto the ground\\.$"));
@@ -190,6 +285,7 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		gfk.getHitMessages().add(Pattern.compile("^You run up [-A-z ']+s chest, kicking back hard enough to make (it|her|him) cough up blood!$"));
 		gfk.getMissMessages().add(Pattern.compile("^You attempt to flip off of [-A-z ']+s chest, but slip and fall down\\.$"));
 		this.skills.add(gfk);
+		confuseCombo.add(gfk);
 		
 		// Tier 3:
 		MonkSpecialSkill tp = new MonkSpecialSkill(3, SkillBranch.CONFUSE, "tsunami push");
@@ -198,6 +294,37 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		tp.getHitMessages().add(Pattern.compile("^You focus chi and shove [-A-z ']+s shoulders, knocking (it|her|him) backwards and off (its|her|his) feet!$"));
 		tp.getMissMessages().add(Pattern.compile("^You reach for [-A-z ']+, but (it|she|he) deflects your hands\\.$"));
 		this.skills.add(tp);
-}
+		confuseCombo.add(tp);
+		
+		// Secret combos
+		List<MonkSpecialSkill> talons = new ArrayList<>();
+		combos.put("talons", talons);
+		talons.add(fts);
+		talons.add(fts);
+		talons.add(as);
+		List<MonkSpecialSkill> breath = new ArrayList<>();
+		combos.put("breath", breath);
+		breath.add(dts);
+		breath.add(gfk);
+		List<MonkSpecialSkill> fury = new ArrayList<>();
+		combos.put("fury", fury);
+		fury.add(hfs);
+		fury.add(wcs);
+		fury.add(fbs);
+		fury.add(fts);
+		List<MonkSpecialSkill> ring = new ArrayList<>();
+		combos.put("ring", ring);
+		ring.add(ek);
+		ring.add(eck);
+		ring.add(whk);	
+
+		// Initialise the skills trained percentages
+		this.skillsTrained = new TreeMap<>();
+	}
+
+    private void reportToGui(String label, String value) {
+    	this.getClientGUI().printText("Generic", "#MONK# " + label + ": ", "34c9eb");
+    	this.getClientGUI().printText("Generic", value + "\n", "FFFFFF");
+    }
 
 }

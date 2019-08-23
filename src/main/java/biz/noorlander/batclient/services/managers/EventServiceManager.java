@@ -3,32 +3,31 @@ package biz.noorlander.batclient.services.managers;
 import biz.noorlander.batclient.services.impl.EventServiceImpl;
 import biz.noorlander.batclient.services.EventService;
 import biz.noorlander.batclient.services.events.ActionEvent;
-import biz.noorlander.batclient.services.events.HeartbeatEvent;
+import biz.noorlander.batclient.services.events.CombatEvent;
 
 public class EventServiceManager {
     private EventService<ActionEvent> actionEventService;
-    private EventService<HeartbeatEvent> heartbeatEventService;
+    private EventService<CombatEvent> combatEventService;
 
-    public EventServiceManager() {
+    private EventServiceManager() {
         super();
         actionEventService = new EventServiceImpl<>();
-        heartbeatEventService = new EventServiceImpl<>();
+        combatEventService = new EventServiceImpl<>();
     }
 
     public EventService<ActionEvent> getActionEventService() {
         return actionEventService;
     }
 
-    public void setActionEventService(EventService<ActionEvent> actionEventService) {
-        this.actionEventService = actionEventService;
+    public EventService<CombatEvent> getCombatEventService() {
+        return combatEventService;
     }
 
-    public EventService<HeartbeatEvent> getHeartbeatEventService() {
-        return heartbeatEventService;
+    private static class EventServiceManagerHelper {
+    	private static final EventServiceManager INSTANCE = new EventServiceManager();
     }
-
-    public void setHeartbeatEventService(EventService<HeartbeatEvent> heartbeatEventService) {
-        this.heartbeatEventService = heartbeatEventService;
+    
+    public static EventServiceManager getInstance() {
+    	return EventServiceManagerHelper.INSTANCE;
     }
-
 }

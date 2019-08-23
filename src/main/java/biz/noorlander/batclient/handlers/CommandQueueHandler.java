@@ -6,18 +6,22 @@ import biz.noorlander.batclient.services.managers.EventServiceManager;
 import com.mythicscape.batclient.interfaces.ClientGUI;
 
 import java.util.LinkedList;
+import java.util.Optional;
+import java.util.regex.Pattern;
 
 public class CommandQueueHandler implements EventListener<ActionEvent> {
 
     private LinkedList<String> commandQueue;
     private boolean executionAction = false;
     private String currentCommand;
+    private String currentAction;
     private ClientGUI gui;
+	private Optional<String> setCurrentActionParameters;
 
-    public CommandQueueHandler(EventServiceManager eventServiceManager, ClientGUI gui) {
+    public CommandQueueHandler(ClientGUI gui) {
         commandQueue = new LinkedList<>();
         this.gui = gui;
-        eventServiceManager.getActionEventService().subscribe(this);
+        EventServiceManager.getInstance().getActionEventService().subscribe(this);
     }
 
     @Override
@@ -32,6 +36,7 @@ public class CommandQueueHandler implements EventListener<ActionEvent> {
                 break;
             case INTERRUPTED:
                 executionAction = false;
+                nextAction();
         }
     }
 
@@ -69,4 +74,27 @@ public class CommandQueueHandler implements EventListener<ActionEvent> {
             reportToGui("Empty");
         }
     }
+
+	public void actionDone() {
+        ActionEvent event = new ActionEvent(ActionEvent.Type.DONE);
+        EventServiceManager.getInstance().getActionEventService().raiseEvent(event);
+	}
+
+	public void actionStarts() {
+        ActionEvent event = new ActionEvent(ActionEvent.Type.START);
+        EventServiceManager.getInstance().getActionEventService().raiseEvent(event);
+	}
+
+	public void actionInterrupted() {
+        ActionEvent event = new ActionEvent(ActionEvent.Type.INTERRUPTED);
+        EventServiceManager.getInstance().getActionEventService().raiseEvent(event);
+	}
+
+	public void setCurrentAction(String action) {
+		this.currentAction = action;
+	}
+	
+	public void setCurrentActionParameters(String parameters) {
+		this.setCurrentActionParameters = Optional.ofNullable(parameters);
+	}
 }
