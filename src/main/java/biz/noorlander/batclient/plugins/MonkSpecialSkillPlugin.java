@@ -30,7 +30,7 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		SHOW_SKILLS("monkskills");
 
 		public final String mudcommand;
-		private Command(String mc) {
+		Command(String mc) {
 			this.mudcommand = mc;
 		}
 	}
@@ -88,16 +88,21 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 			if (matcher.matches()) {
 				parsedResult.addHiliteAttribute(TextAttribute.FOREGROUND, Color.GREEN, 0, text.length());
 				if (this.combos.get(comboSelected).get(comboProgress) == monkSkill) {
-					comboProgress++;
-					if (comboProgress == combos.get(comboSelected).size()) {
-						reportToGui("Combo", comboSelected + " - DONE!");
+					if (comboProgress == combos.get(comboSelected).size() - 1) {
+						reportToGui("Combo", comboSelected + " - DONE!", "00FF00");
 						comboProgress = 0;
 					} else {
-						reportToGui("Combo", comboSelected + " - " + comboProgress);
+						comboProgress++;
+						reportToGui("Combo", comboSelected + " - " + comboProgress, "FFFFFF");
 					}
 				} else {
 					comboProgress = 0;
-					reportToGui("Combo", comboSelected + " - failed");
+					if (this.combos.get(comboSelected).get(comboProgress) == monkSkill) {
+						comboProgress++;
+						reportToGui("Combo", comboSelected + " - RESTARTED ", "FFFFFF");
+					} else {
+						reportToGui("Combo", comboSelected + " - failed", "FF0000");
+					}
 				}
 				return parsedResult;
 			}
@@ -131,7 +136,7 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 			this.comboSelected = combo;
 			return "@party report Monk combo selected: " + combo;
 		} else {
-			reportToGui("Unknown combo", combo);
+			reportToGui("Unknown combo", combo, "FF0000");
 			return "";
 		}
 	}
@@ -170,6 +175,7 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		fbs.getHitMessages().add(Pattern.compile("^You ball up a fist and _drive_ your elbow down onto [-A-z ']+s shoulder, and you feel something pop!$"));
 		fbs.getHitMessages().add(Pattern.compile("^You ball up a fist and [*]drive[*] your elbow down onto [-A-z ']+s shoulder, and you feel something snap!$"));
 		fbs.getHitMessages().add(Pattern.compile("^You ball up a fist and [*]DRIVE[*] it down onto [-A-z ']+s shoulder, and you feel something shatter!$"));
+		fbs.getHitMessages().add(Pattern.compile("^Mustering all your power, you ball up a fist and {2}[>]DRIVE[<] your elbow onto [-A-z ']+ shoulder!"));
 		fbs.getMissMessages().add(Pattern.compile("^You ball up a fist and attempt to drive your elbow down hard onto [-A-z ']+, but only score a glancing blow\\.$"));
 		this.skills.add(fbs);
 		armourCombo.add(fbs);
@@ -190,7 +196,7 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		as.getHitMessages().add(Pattern.compile("^You grab and hurl [-A-z ']+ onto the ground, but (it|she|he) manages to land on (its|her|his) butt\\.$"));
 		as.getHitMessages().add(Pattern.compile("^You grab and hurl [-A-z ']+ to the ground, but (it|she|he) twists to land on (its|her|his) side\\.$"));
 		as.getHitMessages().add(Pattern.compile("^You grab [-A-z ']+ by the right[a-z_]+ and throw (it|she|he) down onto (its|her|his) back!$"));
-		as.getHitMessages().add(Pattern.compile("^You grab [-A-z ']+s right[a-z_]+,  pull it over your shoulder and slam (it|her|him) down, landing on (its|her|his) spine!$"));
+		as.getHitMessages().add(Pattern.compile("^You grab [-A-z ']+s right[a-z_]+, {2}pull it over your shoulder and slam (it|her|him) down, landing on (its|her|his) spine!$"));
 		as.getMissMessages().add(Pattern.compile("^You grab at [-A-z ']+s outstretched limbs, but miss\\.$"));
 		this.skills.add(as);
 		armourCombo.add(ek);
@@ -271,7 +277,7 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		wcs.getHitMessages().add(Pattern.compile("^You manage to swat [-A-z ']+ on the neck, but miss the veins you were aiming for\\.$"));
 		wcs.getHitMessages().add(Pattern.compile("^You go for the neck, but end up giving [-A-z ']+ a harsh slap across the jaw\\.$"));
 		wcs.getHitMessages().add(Pattern.compile("^You [*]swat[*] [-A-z ']+ on the neck, hitting both arteries and temporarily halting (its|her|his) blood to the brain!$"));
-		wcs.getHitMessages().add(Pattern.compile("^You see an excellent opening and [*]SWAT[*] the flat of your hand against [-A-z ']+s neck, hitting both arteries!$"));
+		wcs.getHitMessages().add(Pattern.compile("^You see an excellent opening and [*]SWAT[*] the flat of your hand against [-A-z ']+ neck, hitting both arteries!.*", Pattern.DOTALL | Pattern.MULTILINE | Pattern.UNIX_LINES));
 		wcs.getHitMessages().add(Pattern.compile("^You open your hand and _swat_ [-A-z ']+ in the neck, hitting one of the arteries and disrupting (its|her|his) blood flow!$"));
 		wcs.getHitMessages().add(Pattern.compile("^You can't find a good opening, so you settle for smacking [-A-z ']+ on the side of the head\\.$"));
 		wcs.getMissMessages().add(Pattern.compile("^You try to swat at [-A-z ']+, but can't make flesh contact\\.$"));
@@ -322,9 +328,9 @@ public class MonkSpecialSkillPlugin extends BatClientPlugin
 		this.skillsTrained = new TreeMap<>();
 	}
 
-    private void reportToGui(String label, String value) {
+    private void reportToGui(String label, String value, String colorRGB) {
     	this.getClientGUI().printText("Generic", "#MONK# " + label + ": ", "34c9eb");
-    	this.getClientGUI().printText("Generic", value + "\n", "FFFFFF");
+    	this.getClientGUI().printText("Generic", value + "\n", colorRGB);
     }
 
 }
