@@ -3,24 +3,32 @@ package biz.noorlander.batclient.handlers;
 import biz.noorlander.batclient.services.EventListener;
 import biz.noorlander.batclient.services.events.ActionEvent;
 import biz.noorlander.batclient.services.managers.EventServiceManager;
+import biz.noorlander.batclient.utils.AttributedMessageBuilder;
 import com.mythicscape.batclient.interfaces.ClientGUI;
+import com.mythicscape.batclient.interfaces.ParsedResult;
+import javafx.util.Pair;
 
+import java.awt.*;
+import java.awt.font.TextAttribute;
 import java.util.LinkedList;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-public class CommandQueueHandler implements EventListener<ActionEvent> {
+public class CommandQueueHandler extends AbstractHandler implements EventListener<ActionEvent> {
 
     private LinkedList<String> commandQueue;
     private boolean executionAction = false;
     private String currentCommand;
     private String currentAction;
-    private ClientGUI gui;
 	private Optional<String> setCurrentActionParameters;
 
     public CommandQueueHandler(ClientGUI gui) {
+        super(gui, "QUEUE");
+    }
+
+    @Override
+    public void initHandler() {
         commandQueue = new LinkedList<>();
-        this.gui = gui;
         EventServiceManager.getInstance().getActionEventService().subscribe(this);
     }
 
@@ -40,15 +48,20 @@ public class CommandQueueHandler implements EventListener<ActionEvent> {
         }
     }
 
+    private void reportToGui(String action, String command) {
+        ParsedResult message = AttributedMessageBuilder.create()
+                .append("## " + action + ": ", new Pair<>(TextAttribute.FOREGROUND, new Color(0xFF, 0x99, 0x33)))
+                .append(command, new Pair<>(TextAttribute.FOREGROUND, new Color(0xF0, 0xF0, 0xF0)))
+                .build();
+        reportToGui(message.getStrippedText(), message);
+    }
+
+
+
     public void queueCommand(String command) {
         commandQueue.add(command);
         reportToGui("Queue", command);
         nextAction();
-    }
-
-    private void reportToGui(String action, String command) {
-        gui.printText("Generic", "## " + action + ": ", "FF9933");
-        gui.printText("Generic", command + "\n", "F0F0F0");
     }
 
     private void reportToGui(String action) {
@@ -58,7 +71,7 @@ public class CommandQueueHandler implements EventListener<ActionEvent> {
     private void nextAction() {
         if (!commandQueue.isEmpty() && !executionAction) {
             currentCommand = commandQueue.pop();
-            this.gui.doCommand(currentCommand);
+            command(currentCommand);
         }
     }
 
