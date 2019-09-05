@@ -1,18 +1,16 @@
 package biz.noorlander.batclient.handlers;
 
+import java.awt.Color;
+import java.util.LinkedList;
+import java.util.Optional;
+
+import com.mythicscape.batclient.interfaces.ClientGUI;
+import com.mythicscape.batclient.interfaces.ParsedResult;
+
 import biz.noorlander.batclient.services.EventListener;
 import biz.noorlander.batclient.services.events.ActionEvent;
 import biz.noorlander.batclient.services.managers.EventServiceManager;
 import biz.noorlander.batclient.utils.AttributedMessageBuilder;
-import com.mythicscape.batclient.interfaces.ClientGUI;
-import com.mythicscape.batclient.interfaces.ParsedResult;
-import javafx.util.Pair;
-
-import java.awt.*;
-import java.awt.font.TextAttribute;
-import java.util.LinkedList;
-import java.util.Optional;
-import java.util.regex.Pattern;
 
 public class CommandQueueHandler extends AbstractHandler implements EventListener<ActionEvent> {
 
@@ -50,10 +48,10 @@ public class CommandQueueHandler extends AbstractHandler implements EventListene
 
     private void reportToGui(String action, String command) {
         ParsedResult message = AttributedMessageBuilder.create()
-                .append("## " + action + ": ", new Pair<>(TextAttribute.FOREGROUND, new Color(0xFF, 0x99, 0x33)))
-                .append(command, new Pair<>(TextAttribute.FOREGROUND, new Color(0xF0, 0xF0, 0xF0)))
+                .append("## " + action + ": ", Optional.of(new Color(0xFF, 0x99, 0x33)), Optional.empty())
+                .append(command, Optional.of(new Color(0xF0, 0xF0, 0xF0)), Optional.empty())
                 .build();
-        reportToGui(message.getStrippedText(), message);
+        reportToGui(message);
     }
 
 

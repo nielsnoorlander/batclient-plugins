@@ -1,6 +1,5 @@
 package biz.noorlander.batclient.handlers;
 
-import biz.noorlander.batclient.utils.AttributedMessageBuilder;
 import com.mythicscape.batclient.interfaces.ClientGUI;
 import com.mythicscape.batclient.interfaces.ParsedResult;
 
@@ -16,7 +15,7 @@ public abstract class AbstractHandler {
 
     public abstract void initHandler();
 
-    void reportToGui(String text, ParsedResult message) {
+    void reportToGui(ParsedResult message) {
         this.gui.printAttributedStringToWindow("Generic", message);
     }
 

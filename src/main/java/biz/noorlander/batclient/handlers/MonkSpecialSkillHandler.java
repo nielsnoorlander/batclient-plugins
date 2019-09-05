@@ -1,19 +1,25 @@
 package biz.noorlander.batclient.handlers;
 
+import java.awt.Color;
+import java.awt.font.TextAttribute;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import com.mythicscape.batclient.interfaces.ClientGUI;
+import com.mythicscape.batclient.interfaces.ParsedAttribute;
+import com.mythicscape.batclient.interfaces.ParsedResult;
+
 import biz.noorlander.batclient.model.Command;
 import biz.noorlander.batclient.model.MonkSpecialSkill;
 import biz.noorlander.batclient.utils.AttributedMessageBuilder;
 import biz.noorlander.batclient.utils.ParsedResultUtil;
-import com.mythicscape.batclient.interfaces.ClientGUI;
-import com.mythicscape.batclient.interfaces.ParsedResult;
-import javafx.util.Pair;
-
-import java.awt.*;
-import java.awt.font.TextAttribute;
-import java.util.*;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class MonkSpecialSkillHandler extends AbstractHandler {
     private Pattern showSkillsPattern;
@@ -81,9 +87,12 @@ public class MonkSpecialSkillHandler extends AbstractHandler {
             return "@party report Monk combo selected: " + combo;
         } else {
             ParsedResult message = AttributedMessageBuilder.create()
-                    .append("Unknown combo: ", new Pair<>(TextAttribute.FOREGROUND, Color.RED))
-                    .append(combo).build();
-            reportToGui("COMBO ERROR!", message);
+                    .append("Unknown combo: ", Optional.of(Color.RED), Optional.empty())
+                    .append(combo).append(". Available combos are:").build();
+            reportToGui(message);
+            this.combos.keySet().forEach(key -> reportToGui(AttributedMessageBuilder.create()
+                    .append(" - ")
+                    .append(key).build()));
             return "";
         }
     }
@@ -144,7 +153,7 @@ public class MonkSpecialSkillHandler extends AbstractHandler {
         this.skills = new ArrayList<>();
         // Start with the ARMOUR branch skills
         List<MonkSpecialSkill> armourCombo = new ArrayList<>();
-        this.combos.put("arm", armourCombo);
+        this.combos.put("armour", armourCombo);
         // Tier 1: Falling boulder strike
         MonkSpecialSkill fbs = new MonkSpecialSkill(1, MonkSpecialSkill.SkillBranch.ARMOUR, "falling boulder strike");
         fbs.getHitMessages().add(Pattern.compile("^You ball up a fist and drive your elbow down at [-A-z ']+s shoulder, but only bruise the muscle\\.$"));
@@ -180,7 +189,7 @@ public class MonkSpecialSkillHandler extends AbstractHandler {
 
         // MULTITARGET Branch
         List<MonkSpecialSkill> multiCombo = new ArrayList<>();
-        this.combos.put("mul", multiCombo);
+        this.combos.put("multi", multiCombo);
         // Tier 1:
         MonkSpecialSkill hfs = new MonkSpecialSkill(1, MonkSpecialSkill.SkillBranch.MULTITARGET, "hydra fang strike");
         hfs.getHitMessages().add(Pattern.compile("^With each [*]JAB[*] you feel your hand dig deeply between the ribs, halfway down to the wrist!$"));
@@ -219,7 +228,7 @@ public class MonkSpecialSkillHandler extends AbstractHandler {
 
         // DEFENSE Branch
         List<MonkSpecialSkill> defCombo = new ArrayList<>();
-        this.combos.put("def", defCombo);
+        this.combos.put("avoid", defCombo);
         // Tier 1:
         MonkSpecialSkill fts = new MonkSpecialSkill(1, MonkSpecialSkill.SkillBranch.DEFENSE, "falcon talon strike");
         fts.getHitMessages().add(Pattern.compile("^You push off of [-A-z ']+s shoulders hard enough to flip over (its|her|his) head, but can't get a decent claw in\\.$"));
@@ -248,7 +257,7 @@ public class MonkSpecialSkillHandler extends AbstractHandler {
 
         // CONFUSE Branch
         List<MonkSpecialSkill> confuseCombo = new ArrayList<>();
-        this.combos.put("con", confuseCombo);
+        this.combos.put("confuse", confuseCombo);
         // Tier 1:
         MonkSpecialSkill wcs = new MonkSpecialSkill(1, MonkSpecialSkill.SkillBranch.CONFUSE, "wave crest strike");
         wcs.getHitMessages().add(Pattern.compile("^You manage to swat [-A-z ']+ on the neck, but miss the veins you were aiming for\\.$"));

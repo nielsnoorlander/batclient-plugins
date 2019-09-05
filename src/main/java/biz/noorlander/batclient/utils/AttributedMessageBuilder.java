@@ -1,11 +1,12 @@
 package biz.noorlander.batclient.utils;
 
+import java.awt.Color;
+import java.awt.font.TextAttribute;
+import java.util.ArrayList;
+import java.util.Optional;
+
 import com.mythicscape.batclient.interfaces.ParsedAttribute;
 import com.mythicscape.batclient.interfaces.ParsedResult;
-import javafx.util.Pair;
-
-import java.text.AttributedCharacterIterator;
-import java.util.ArrayList;
 
 public final class AttributedMessageBuilder {
     private StringBuilder message;
@@ -25,20 +26,25 @@ public final class AttributedMessageBuilder {
         return this;
     }
 
-    @SafeVarargs
-    public final AttributedMessageBuilder append(String text, Pair<AttributedCharacterIterator.Attribute, Object>... attributes) {
+    public final AttributedMessageBuilder append(String text, Optional<Color> foreground, Optional<Color> background) {
         int currentPos = message.length();
         message.append(text);
         int newPos = message.length();
-
-        for (Pair<AttributedCharacterIterator.Attribute,Object> attribute : attributes) {
-            ParsedAttribute textAttribute = new ParsedAttribute(attribute.getKey(), attribute.getValue(), currentPos, newPos);
-            textAttributes.add(textAttribute);
-        }
+        foreground.ifPresent(color -> textAttributes.add(buildForegroundAttribute(color, currentPos, newPos)));
+        background.ifPresent(color -> textAttributes.add(buildBackgroundAttribute(color, currentPos, newPos)));
         return this;
     }
 
+	private ParsedAttribute buildForegroundAttribute(Color foreground, int currentPos, int newPos) {
+		return new ParsedAttribute(TextAttribute.FOREGROUND, foreground, currentPos, newPos);
+	}
+
+	private ParsedAttribute buildBackgroundAttribute(Color foreground, int currentPos, int newPos) {
+		return new ParsedAttribute(TextAttribute.BACKGROUND, foreground, currentPos, newPos);
+	}
+
     public ParsedResult build() {
+    	message.append(System.lineSeparator());
         ParsedResult result = new ParsedResult(message.toString());
         result.setAttributes(textAttributes);
         return result;
