@@ -1,6 +1,8 @@
 package biz.noorlander.batclient.plugins;
 
 import biz.noorlander.batclient.ui.BatGauge;
+import biz.noorlander.batclient.utils.ConfigService;
+import biz.noorlander.batclient.model.WindowsConfig;
 import biz.noorlander.batclient.timers.TickerTimerTask;
 import com.mythicscape.batclient.interfaces.*;
 
@@ -26,8 +28,8 @@ public class TickerPlugin extends BatClientPlugin implements BatClientPluginTrig
         if (clientWin != null) {
             clientWin.close();
         }
-
-        clientWin = this.getClientGUI().createBatWindow( "Ticker", 10, 900, 240, 50 );
+        WindowsConfig tickerConfig = ConfigService.getInstance().getWindowsConfig(this);
+        clientWin = this.getClientGUI().createBatWindow( "Ticker", tickerConfig.getLeft(), tickerConfig.getTop(), 240, 50 );
         clientWin.removeTabAt( 0 );
 
         resourcesTicker = new BatGauge(new Dimension(240, 50), 30, "s", green);
@@ -86,6 +88,8 @@ public class TickerPlugin extends BatClientPlugin implements BatClientPluginTrig
 
     public void clientExit() {
         System.out.println("--- Exit TriggerPlugin ---\n");
+        System.out.println("Ticker at: x = " + clientWin.getLocation().x + ", y = " + clientWin.getLocation().y);
+        ConfigService.getInstance().saveWindowsConfig(this, new WindowsConfig(this, clientWin));
         timer.cancel();
     }
 }

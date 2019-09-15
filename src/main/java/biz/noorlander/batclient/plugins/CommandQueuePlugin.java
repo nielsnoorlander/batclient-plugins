@@ -18,13 +18,13 @@ public class CommandQueuePlugin extends BatClientPlugin implements BatClientPlug
     private Pattern actionPattern;
 
     public void loadPlugin() {
-        System.out.println("--- Loading CommandQueuePlugin ---");
+        System.out.println("--- Loading " + getName() + " ---");
         commandQueueHandler = new CommandQueueHandler(this.getClientGUI());
         this.actionPattern = Pattern.compile("^(use|cast|chant|sing) [']?([-A-z ]+?)[']?([ ]+at.+)?$", Pattern.CASE_INSENSITIVE);
     }
 
     public String getName() {
-        return "CommandQueuePlugin";
+		return this.getClass().getSimpleName();
     }
 
     public ParsedResult trigger(ParsedResult parsedResult) {

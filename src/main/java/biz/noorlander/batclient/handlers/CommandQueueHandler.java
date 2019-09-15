@@ -108,4 +108,10 @@ public class CommandQueueHandler extends AbstractHandler implements EventListene
 	public void setCurrentActionParameters(String parameters) {
 		this.setCurrentActionParameters = Optional.ofNullable(parameters);
 	}
+
+	@Override
+	public void destroyHandler() {
+		// TODO Auto-generated method stub
+		
+	}
 }

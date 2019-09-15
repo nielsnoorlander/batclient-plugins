@@ -14,6 +14,7 @@ public abstract class AbstractHandler {
     }
 
     public abstract void initHandler();
+    public abstract void destroyHandler();
 
     void reportToGui(ParsedResult message) {
         this.gui.printAttributedStringToWindow("Generic", message);
