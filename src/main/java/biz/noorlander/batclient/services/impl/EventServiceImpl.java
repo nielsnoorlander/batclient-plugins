@@ -15,6 +15,7 @@ public class EventServiceImpl<T> implements EventService<T> {
     }
 
     public void subscribe(EventListener<T> eventListener) {
+    	System.out.println("EventService: SUBSCRIBED -> " + eventListener.getClass().getSimpleName());
         listeners.add(eventListener);
     }
 

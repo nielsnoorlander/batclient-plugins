@@ -1,3 +1,8 @@
 batUtils.iml
 .idea/
 target/
+/.classpath
+/.project
+/command-queue.iml
+/.settings/org.eclipse.jdt.core.prefs
+/.settings/org.eclipse.m2e.core.prefs

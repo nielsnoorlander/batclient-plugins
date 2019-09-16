@@ -1,23 +1,33 @@
 package biz.noorlander.batclient.handlers;
 
+import java.awt.Color;
+import java.util.LinkedList;
+import java.util.Optional;
+
+import com.mythicscape.batclient.interfaces.ClientGUI;
+import com.mythicscape.batclient.interfaces.ParsedResult;
+
 import biz.noorlander.batclient.services.EventListener;
 import biz.noorlander.batclient.services.events.ActionEvent;
 import biz.noorlander.batclient.services.managers.EventServiceManager;
-import com.mythicscape.batclient.interfaces.ClientGUI;
+import biz.noorlander.batclient.utils.AttributedMessageBuilder;
 
-import java.util.LinkedList;
-
-public class CommandQueueHandler implements EventListener<ActionEvent> {
+public class CommandQueueHandler extends AbstractHandler implements EventListener<ActionEvent> {
 
     private LinkedList<String> commandQueue;
     private boolean executionAction = false;
     private String currentCommand;
-    private ClientGUI gui;
+    private String currentAction;
+	private Optional<String> setCurrentActionParameters;
 
-    public CommandQueueHandler(EventServiceManager eventServiceManager, ClientGUI gui) {
+    public CommandQueueHandler(ClientGUI gui) {
+        super(gui, "QUEUE");
+    }
+
+    @Override
+    public void initHandler() {
         commandQueue = new LinkedList<>();
-        this.gui = gui;
-        eventServiceManager.getActionEventService().subscribe(this);
+        EventServiceManager.getInstance().getActionEventService().subscribe(this);
     }
 
     @Override
@@ -32,18 +42,24 @@ public class CommandQueueHandler implements EventListener<ActionEvent> {
                 break;
             case INTERRUPTED:
                 executionAction = false;
+                nextAction();
         }
     }
+
+    private void reportToGui(String action, String command) {
+        ParsedResult message = AttributedMessageBuilder.create()
+                .append("## " + action + ": ", Optional.of(new Color(0xFF, 0x99, 0x33)), Optional.empty())
+                .append(command, Optional.of(new Color(0xF0, 0xF0, 0xF0)), Optional.empty())
+                .build();
+        reportToGui(message);
+    }
+
+
 
     public void queueCommand(String command) {
         commandQueue.add(command);
         reportToGui("Queue", command);
         nextAction();
-    }
-
-    private void reportToGui(String action, String command) {
-        gui.printText("Generic", "## " + action + ": ", "FF9933");
-        gui.printText("Generic", command + "\n", "F0F0F0");
     }
 
     private void reportToGui(String action) {
@@ -53,7 +69,7 @@ public class CommandQueueHandler implements EventListener<ActionEvent> {
     private void nextAction() {
         if (!commandQueue.isEmpty() && !executionAction) {
             currentCommand = commandQueue.pop();
-            this.gui.doCommand(currentCommand);
+            command(currentCommand);
         }
     }
 
@@ -69,4 +85,33 @@ public class CommandQueueHandler implements EventListener<ActionEvent> {
             reportToGui("Empty");
         }
     }
+
+	public void actionDone() {
+        ActionEvent event = new ActionEvent(ActionEvent.Type.DONE);
+        EventServiceManager.getInstance().getActionEventService().raiseEvent(event);
+	}
+
+	public void actionStarts() {
+        ActionEvent event = new ActionEvent(ActionEvent.Type.START);
+        EventServiceManager.getInstance().getActionEventService().raiseEvent(event);
+	}
+
+	public void actionInterrupted() {
+        ActionEvent event = new ActionEvent(ActionEvent.Type.INTERRUPTED);
+        EventServiceManager.getInstance().getActionEventService().raiseEvent(event);
+	}
+
+	public void setCurrentAction(String action) {
+		this.currentAction = action;
+	}
+	
+	public void setCurrentActionParameters(String parameters) {
+		this.setCurrentActionParameters = Optional.ofNullable(parameters);
+	}
+
+	@Override
+	public void destroyHandler() {
+		// TODO Auto-generated method stub
+		
+	}
 }
