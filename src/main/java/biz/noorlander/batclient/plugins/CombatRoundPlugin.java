@@ -11,7 +11,7 @@ import com.mythicscape.batclient.interfaces.ParsedResult;
 
 import biz.noorlander.batclient.handlers.CombatRoundHandler;
 
-public class CombatRoundPlugin extends BatClientPlugin implements BatClientPluginTrigger, BatClientPluginCommandTrigger, BatClientPluginUtil {
+public class CombatRoundPlugin extends BatClientPlugin implements BatClientPluginTrigger, BatClientPluginUtil {
 
 	private Pattern combatRoundPattern;
 	private CombatRoundHandler combatRoundHandler;
@@ -24,12 +24,6 @@ public class CombatRoundPlugin extends BatClientPlugin implements BatClientPlugi
 
 		this.combatRoundPattern = Pattern.compile("^[*]+ Round ([0-9]+) ([(][0-9]+[)] )?[*]+$");
 		this.combatRoundHandler = new CombatRoundHandler(getClientGUI());
-	}
-
-	@Override
-	public String trigger(String command) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 	@Override
