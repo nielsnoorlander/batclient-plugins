@@ -336,6 +336,10 @@ public class MonkSpecialSkillHandler extends AbstractHandler implements EventLis
 				"^Your forward flip comes too late, and you end up merely slamming your back against " + CommonPatterns.PATTERN_NPC_NAME + "\\.$"));
 		eck.getHitMessages().add(Pattern.compile(
 				"^Your forward flip is a little too late, but you manage to club " + CommonPatterns.PATTERN_NPC_NAME + " over the shoulder with the heel of your foot\\.$"));
+		eck.getHitMessages().add(Pattern.compile(
+				"^Your forward flip was a split-second late, but you wrap your leg over " + CommonPatterns.PATTERN_NPC_NAME + "s shoulder and bring your heel hard into (its|her|his) back!$"));
+		eck.getHitMessages().add(Pattern.compile(
+				"^You forward flip and swing your foot like a flail, thumping " + CommonPatterns.PATTERN_NPC_NAME + " on the back of the head!$"));
 		eck.getMissMessages().add(Pattern.compile("^Your forward flip was too early, leaving you flat on your back!$"));
 		this.skills.add(eck);
 		defCombo.add(eck);
@@ -344,6 +348,10 @@ public class MonkSpecialSkillHandler extends AbstractHandler implements EventLis
 		MonkSpecialSkill ltt = new MonkSpecialSkill(3, MonkSpecialSkill.SkillBranch.DEFENSE, "lions teeth throw");
 		ltt.getHitMessages().add(Pattern
 				.compile("^You fall short, and end up merely kicking (it|her|him) in the face with one foot\\.$"));
+		ltt.getHitMessages().add(Pattern
+				.compile("^You hurl yourself through the air, feet first and twisting your body\\..*", Pattern.DOTALL | Pattern.MULTILINE | Pattern.UNIX_LINES));
+		ltt.getHitMessages().add(Pattern
+				.compile("^You push off " + CommonPatterns.PATTERN_NPC_NAME + "s shoulders and do a double somersault!.*", Pattern.DOTALL | Pattern.MULTILINE | Pattern.UNIX_LINES));
 		ltt.getMissMessages().add(Pattern.compile(
 				"^You hurl your twisting body feet-first through the air at " + CommonPatterns.PATTERN_NPC_NAME + ", but fall short and land on your side\\.$"));
 		this.skills.add(ltt);
