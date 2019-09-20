@@ -1,0 +1,903 @@
+/////////////////////////////////////////////////////////////////////////////
+// Prot trigs created by Era (era@batmud)
+// These trigs are a part of BatClient.
+// 
+// The trigs follow the prots being cast at this player, the 
+// new prots are reported on party report, as well as the ones
+// dropping. The status of current prots can be checked at any
+// time. Should handle correctly stacking prots, sticky prots,
+// dying and dmp.
+// Usage:
+//    '$prots.help' - Online this help.
+//    '$prots'      - echo prots to yourself
+//    '$prots p'    - report prots to: DEFAULTCOMMAND (comes with tweak too)
+//    '$prots name' - report prots to: @emoteto name
+//    '$prots.up prot' - force a prot up
+//    '$prots.down prot' - force a prot down
+//    '$prots.clear' - remove all prots
+/////////////////////////////////////////////////////////////////////////////
+//
+// Script version, major version should not change unless something drastic
+// happens, minor version is for moderate changes and last number for any
+// minor edits. Starting 1.0.0 at March 4th 2009, thanks Markuz for the idea.
+
+// 1.0.2, changed error messages
+
+// Last edited: Jan 2th 2010
+SCRIPT_VERSION = "1.0.2";
+
+SCRIPT_NAME = "prots";
+SCRIPT_DESC = "A couple of simple prots";
+SCRIPT_OFF = false;
+
+/////////////////////////////////////////////////////////////////////////////
+// PUBLIC VARIABLES, EDIT THESE FOR CONFIGURATION
+DEFAULTCOMMAND="@@party report";
+
+
+/////////////////////////////////////////////////////////////////////////////
+// VARIOUS DEFINITIONS, EDIT IF YOU KNOW WHAT YOU ARE DOING
+// The order of first prots displayed (the rest are alphabetic)
+String[] protorder = new String[]{
+    "unstun", "flex", "pfe", "pfg", "hprot", "sof", "war", 
+    "aoa", "fabs", 
+    "gacid", "gasphyx", "gcold", "gelec", "gfire", "gmagic", "gpoison", "gpsi", 
+    "cs", "eb", "ec", "fi", "hr", "md", "ps", "td"};
+
+// The prots that are removed with dmp (note, dmp'd hw gets down message)
+String[] protconjus = new String[] {
+    "aoa", "fabs",
+    "gacid", "gasphyx", "gcold", "gelec", "gfire", "gmagic", "gpoison", "gpsi", 
+    "cs", "eb", "ec", "fi", "hr", "md", "ps", "td", "sof", "displ",
+    "zooprot", "kryzprot", "kineprot", "raciprot"};
+
+// The prots that are removed with death
+String[] protdeath = new String[]{
+    "flex"," pfe", "rt", "hprot", "souls", "vine", "eskin"};
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// PRIVATE VARIABLES
+PROTLONG=0;      // spellnames
+PROTSHORT=1;     // spellnames
+FLAGEXPIRE=0;    // spellinfos
+FLAGPROTTIME=0;  // prots
+FLAGNOTIMING=1;  // spellinfos
+FLAGSTICKY=1;    // prots
+FLAGSTACKING=2;  // both spellinfos and prots
+FLAGQUIETMODE=3; // spellinfos
+
+// Infos about all the prots
+HashMap spellnames = new HashMap();
+HashMap spellinfos = new HashMap();
+String conjuprot = "";
+int unstun_times;
+/////////////////////////////////////////////////////////////////////////////
+
+
+// The prots currently up sorted first by list above, and by alphabet secondarily
+TreeMap prots = new TreeMap(new Comparator()
+    {
+        // Position of member in string array
+        public int arraypos(String[] lista, String member) {
+            for(int i=0; i<lista.length; i++)
+                if (lista[i].equals(member))
+                    return i;
+            return 99999; // Ensure it's the last
+        }
+        public int compare(String a, String b) {
+             int apos=arraypos(protorder,a), bpos=arraypos(protorder,b);
+             if (apos > bpos)
+                 return 1;
+             else if (apos < bpos)
+                 return -1;
+             else
+                 return a.compareToIgnoreCase(b);
+        }
+    }
+                            );
+
+/////////////////////////////////////////////////////////////////////////////
+// The help
+void help()
+{
+    clientGUI.printText("general", 
+"Prot reporting and tracking system. Reports prots cast on you, prots dropping, "+
+"and current protstatus upon request. Handles sticky prots, dmps, deaths and stacking "+
+"prots, and should be pretty complete. Contact Era(@batmud) if you have any questions.\n" +
+"Version: "+CLIENT_VERSION+"\n"+
+"USAGE:\n");
+    clientGUI.printText("general", "'$prots.help' - This help.\n");
+    clientGUI.printText("general", "'$prots'      - echo prots to yourself\n");
+    clientGUI.printText("general", "'$prots p'    - report prots to: DEFAULTCOMMAND  (comes with tweak too)\n");
+    clientGUI.printText("general", "'$prots name' - report prots to: @emoteto name\n");
+    clientGUI.printText("general", "'$prots.up prot' - force a prot up\n");
+    clientGUI.printText("general", "'$prots.down prot' - force a prot down\n");
+    clientGUI.printText("general", "'$prots.clear' - remove all prots\n");
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Show the status of prots currently. 
+// Usage: 
+// '$prots'      - echo prots to yourself
+// '$prots p'    - report prots to: DEFAULTCOMMAND  (comes with tweak too)
+// '$prots name' - report prots to: @emoteto name
+command(String cmd, String msg)
+{
+    if ("".equals(cmd))
+        clientGUI.printText("general", msg+"\n");
+    else if ("p".equals(cmd))
+        clientGUI.doCommand(DEFAULTCOMMAND+" "+msg);
+    else
+        clientGUI.doCommand("@@emoteto "+cmd+" "+msg);
+} 
+
+// Returns the tag of singleprot + uptime
+String getShort(String p)
+{
+    String[] strs = spellnames.get(p);
+    if (strs == null)
+        return "";
+
+    String newShort=strs[PROTSHORT];
+    int[] list = spellinfos.get(p);
+    int[] protstatus = prots.get(p);
+    if (protstatus[FLAGSTICKY] == 1)
+        newShort = newShort.concat("(S)");
+    if (protstatus[FLAGSTACKING] > 1)
+        newShort = newShort.concat("("+protstatus[FLAGSTACKING]+")");
+    if (protstatus == null)
+        return "??";
+    if (list[FLAGNOTIMING] == 0)
+        newShort = newShort.concat(formattime(timenow()-protstatus[FLAGPROTTIME]));
+    newShort = newShort.concat(" ");
+    return newShort;
+}
+
+
+// Check if a prot is expired, and removes if it is. 
+// Returns 1 on expired prot, 0 otherwise
+private int expired(String prot) {
+    int[] protstatus = prots.get(prot);
+    if (protstatus == null)
+        return 1;
+
+    int[] protinfos = spellinfos.get(prot);
+    if (protinfos == null)
+        return 0;
+
+    if(protinfos[FLAGEXPIRE] > 0) {
+        if (timenow() > protstatus[FLAGPROTTIME] + protinfos[FLAGEXPIRE]) {
+            prots.remove(prot);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// This is run when you type "$prots", and it will echo the prots to you.
+// With argument p ($prots p) it reports to party and any other argument 
+// sends the report with emoteto ($prots name).
+run()
+{
+    String cmdd="";
+    String protline="";
+    Iterator p = prots.keySet().iterator();
+
+    if (argument != null && !("".equals(argument)))
+        cmdd=argument;
+
+    String thisprot;
+    // try - catch in case the prots are modified while we create the report
+    try {
+	while(p.hasNext()) {
+	    thisprot = p.next();
+	    if (expired(thisprot) == 0) {
+		protline = protline.concat(getShort(thisprot));
+	    }
+	}
+    }
+    catch (ConcurrentModificationException e) {
+	// Maybe add an error report here?
+	protline = "prots.bcs: Argh! Can't show the prots, please try again";
+    }
+    if ("".equals(protline))
+        protline="no prots!";
+    command(cmdd, "PROTS: "+protline);
+}
+
+
+// Remove all prots
+public void clear()
+{
+    prots.clear();
+}
+
+// Remove all prots in a list
+public void removelist(String[] lista) 
+{
+    int[] protstatus;
+    String prots_removed="";
+    for (int i=0; i<lista.length; i++) {
+        protstatus = prots.get(lista[i]);
+        if (protstatus != null && protstatus[FLAGSTICKY] == 0) {
+            String[] descs = spellnames.get(lista[i]);
+            if (descs != null)
+                prots_removed = prots_removed.concat(descs[PROTSHORT]+" ");
+            else
+                prots_removed = prots_removed.concat(lista[i]+" ");
+            prots.remove(lista[i]);
+        }
+    }
+    if (!"".equals(prots_removed))
+        prots_removed = prots_removed.concat(" DOWN!");
+    command("p", "Removezz hits me! "+prots_removed);
+}
+
+public void dmp()
+{
+    removelist(protconjus);
+}
+
+public void death()
+{
+    removelist(protdeath);
+}
+
+// Current time in seconds, probably stops working at year 2038
+public int timenow() {
+    return (int)(java.lang.System.currentTimeMillis()/1000);
+}
+
+// Gets a time in seconds and returns "[mm:ss]" or "[hh:mm]"
+String formattime(int timediff)
+{
+    int h=timediff/3600;
+    int m=(timediff/60)%60;
+    if (h>0) {
+        if (m<10)
+            return "["+h+"h0"+m+"m]";
+        else
+            return "["+h+"h"+m+"m]";
+    }
+    int s=timediff%60;
+    if (s < 10)
+        return "["+m+":0"+s+"]";
+    else
+        return "["+m+":"+s+"]";
+}
+
+   
+// Report a prot dropping, report the time in the future
+void down()
+{
+    if (argument == null || "".equals(argument)) {
+        clientGUI.printText("general", "prots.bcs: prot down, no argument!\n");
+        return;
+    }
+    if (spellnames.get(argument) == null) {
+        command("p", "Unknown prot DOWN!");
+        return;
+    }
+    String desc = spellnames.get(argument)[PROTLONG];
+    int[] protstatus = prots.get(argument);
+    int[] protinfos = spellinfos.get(argument);
+    if (protstatus != null) {
+        String prottime="";
+        if (protstatus[FLAGNOTIMING] == 0) 
+            prottime=formattime(timenow()-protstatus[FLAGPROTTIME]);
+
+        if (protstatus[FLAGSTACKING] > 1) {
+            protstatus[FLAGSTACKING]--;
+            prots.put(argument, protstatus);
+            if (protinfos[FLAGQUIETMODE] == 0 || protinfos[FLAGQUIETMODE] == 1)
+                command("p", ""+desc+" DOWN ("+protstatus[FLAGSTACKING]+" left)!");
+        }
+        else {
+            prots.remove(argument);
+            if (protinfos[FLAGQUIETMODE] == 0 || protinfos[FLAGQUIETMODE] == 1)
+                command("p", ""+desc+" DOWN! "+prottime);
+        }
+    }
+}
+
+void stickyup()
+{
+    if (argument == null || "".equals(argument)) {
+        clientGUI.printText("general", "prots.bcs: prot up, no argument!\n");
+        return;
+    }
+    up_aux(argument, 1);
+}
+
+// Report a prot going up, store the times etc in the future.
+void up()
+{
+    if (argument == null || "".equals(argument)) {
+        clientGUI.printText("general", "prots.bcs: prot up, no argument!\n");
+        return;
+    }
+    up_aux(argument, 0);
+}
+
+// Actual prot-up handling, internal because of sticky prots
+// Called by up and stickyup.
+int up_aux(String arg, int sticky)
+{
+    String name = arg;
+    if ("conju".equals(name))
+        if ("".equals(conjuprot)) {
+            clientGUI.printText("general", "prots.bcs: Unknown conjuprot!"+conjuprot+"!\n");
+            return 0;
+        }
+        else {
+            name = conjuprot;
+            conjuprot = "";
+        }
+    else
+        if (spellnames.get(name) == null) { 
+            clientGUI.printText("general", "prots.bcs: no such prot: '"+name+"'\n");
+            return 0;
+        }
+
+    // Refresh the unstun tag.
+    if ("unstun".equals(name)) {
+        spellnames.put(name, new String[]{"Unstun", "Uns"});
+        unstun_times = 0;
+    }
+    if ("hw".equals(name)) {
+        spellnames.put(name, new String[]{"Heavy Weight", "HW"});
+        unstun_times = 0;
+    }
+    if ("link".equals(name)) {
+        command("", "LIFE LINK!\n");
+        String tgt = vars.get(2);
+        command("", "Vars:"+tgt+"!\n");
+        spellnames.put(name, new String[]{"Life Link ("+tgt+")", "Link("+tgt+")"});
+    }
+
+    String extrainfo = "";
+    int stacking = spellinfos.get(name)[FLAGSTACKING];
+    int quietmode = spellinfos.get(name)[FLAGQUIETMODE];
+    int stacks=0;
+    if (stacking > 0) {
+        int[] protstatus = prots.get(name);
+        if (protstatus != null)
+            stacks = protstatus[FLAGSTACKING];
+        stacks++;
+        if (stacks > 1)
+          extrainfo = " ("+stacks+" stacked)";
+    }
+
+    int[] protinfo = new int[]{timenow(), sticky, stacks};
+
+    prots.put(name, protinfo);
+
+    if (sticky == 1)
+        extrainfo = " (STICKY)";
+
+    String desc = spellnames.get(name)[PROTLONG];
+
+    if (name != null && (quietmode == 0 || quietmode == 2)) {
+        command("p", ""+desc+" UP"+extrainfo+"!");
+    }
+    return 0;
+}
+
+// Called when just cast hw was sticky
+void hw()
+{
+    int[] protstatus = prots.get("hw");
+    if (protstatus == null)
+        return;
+    // Was the hw cast in this same second
+    if (protstatus[FLAGPROTTIME] == timenow()) {
+        protstatus[FLAGSTICKY] = 1;
+        prots.put("hw", protstatus);
+        command("p", "It was sticky.");
+    }
+}
+
+// Called when unstun is weakened
+void unstun()
+{
+    unstun_times++;
+    spellnames.put("unstun", new String[]{"Unstun", "Uns[-"+unstun_times+"]"});
+    command("p", "Unstun weakened ("+unstun_times+" times)");
+}
+
+// Conjuprot spellwords
+int conju()
+{
+    if (argument == null || "".equals(argument)) {
+        clientGUI.printText("general", "prots.bcs: unknown conjuprot definition!\n");
+        return 0;
+    }
+    conjuprot = argument;
+    return 0;
+}
+
+
+// Helper functions to keep things more readable.
+void define_conjuwords(String name, String spellwords)
+{
+    triggerManager.newTrigger("prot_spellwords_"+name,
+                              spellwords, "$"+SCRIPT_NAME+".conju "+name,
+                              false, false, false, null, Font.PLAIN);
+}
+void define_protup(String name, String upmsg)
+{
+    triggerManager.newTrigger("prot_up_"+name,
+                              "^"+upmsg, "$"+SCRIPT_NAME+".up "+name,
+                              false, false, false, null, Font.PLAIN);
+}
+void define_stickyprotup(String name, String upmsg)
+{
+    triggerManager.newTrigger("prot_up_sticky_"+name,
+                              "^"+upmsg, "$"+SCRIPT_NAME+".stickyup "+name,
+                              false, false, false, null, Font.PLAIN);
+}
+void define_protdown(String name, String downmsg)
+{
+    triggerManager.newTrigger("prot_down_"+name,
+                              "^"+downmsg, "$"+SCRIPT_NAME+".down "+name,
+                              false, false, false, null, Font.PLAIN);
+}
+
+// name - name of the prot, eg. aoa
+// short - Description for protstatus, eg. AoA
+// long - Description for up/down, eg. Armour of Aether
+// upmsgs/downmsg - messages for protup/down (non mandatory)
+// expire - Max length of the prot in seconds
+// noTiming - 0:no effect, 1: don't show timings
+// stacking - 0 for regular, 1 for stacking prots
+// quietmode - 0:showall, 1:only protup, 2:only protdown, 3:none
+void define_prots(String name, String shortName, String longName,
+             String upmsg, String downmsg,
+             int expire, int noTiming, int stacking, int quietmode)
+{
+    if ("".equals(name))
+        return;
+    if ("".equals(shortName))
+        shortName=name;
+    if ("".equals(shortName))
+        longName=name;
+
+    // Save the new spell shortdesc and longdesc
+    String[] names = new String[]{longName, shortName};
+    spellnames.put(name, names);
+
+    int [] infos = new int[]{expire, noTiming, stacking, quietmode};
+    spellinfos.put(name, infos);
+
+    // Create the up/down triggers for this prot
+    if (!"".equals(upmsg))
+        define_protup(name, upmsg);
+    if (!"".equals(downmsg))
+        define_protdown(name, downmsg);
+}
+
+// Loads the trigs when starting the client.
+void bootup() 
+{
+/////////////////////////////////////////////////////////////////////////////
+// PROT DEFINES GENERATED FROM TF TRIGS BY ERA
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// Sticky itself
+    define_prots("rd", "RD", "Resist Dispel",
+      "You feel extra sticky for protection[.]",
+      "You feel less sticky[.]",
+      600, 0, 0, 0);
+// Greater nonsticky
+    define_prots("aoa", "AoA", "Armour of Aether",
+      "You see a crystal clear shield fade into existance around you",
+      "Your crystal clear shield fades out[.]",
+      1010, 0, 0, 0);
+    define_prots("gpoison", "G-Poison", "Shield of Detoxification",
+      "You see a slimy olive green shield fade into existance around you",
+      "Your slimy olive green shield fades out[.]",
+      1010, 0, 0, 0);
+    define_prots("gmagic", "G-Magic", "Repulsor Aura",
+      "You see a flickering golden shield fade into existance around you",
+      "Your flickering golden shield fades out[.]",
+      1010, 0, 0, 0);
+    define_prots("gelec", "G-Elec", "Lightning Shield",
+      "You see a neon purple shield fade into existance around you",
+      "Your neon purple shield fades out[.]",
+      1010, 0, 0, 0);
+    define_prots("gcold", "G-Cold", "Frost Shield",
+      "You see a frosty blue-white shield fade into existance around you",
+      "Your frosty blue-white shield fades out[.]",
+      1010, 0, 0, 0);
+    define_prots("gfire", "G-Fire", "Flame Shield",
+      "You see a crackling red-orange shield fade into existance around you",
+      "Your crackling red-orange shield fades out[.]",
+      1010, 0, 0, 0);
+    define_prots("gasphyx", "G-Asphyx", "Aura of Wind",
+      "You see a swirling foggy white shield fade into existance around you",
+      "Your swirling foggy white shield fades out[.]",
+      1010, 0, 0, 0);
+    define_prots("gacid", "G-Acid", "Acid Shield",
+      "You see a bubbling yellow shield fade into existance around you",
+      "Your bubbling yellow shield fades out[.]",
+      1010, 0, 0, 0);
+    define_prots("gpsi", "G-Psi", "Psionic Phalanx",
+      "You see a misty pale blue shield fade into existance around you",
+      "Your misty pale blue shield fades out[.]",
+      1010, 0, 0, 0);
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// Greater sticky
+    define_stickyprotup("aoa",
+      "You see an extra crystal clear shield fade into existance around you[.]");
+    define_stickyprotup("gpoison",
+      "You see an extra slimy olive green shield fade into existance around you[.]");
+    define_stickyprotup("gmagic",
+      "You see an extra flickering golden shield fade into existance around you[.]");
+    define_stickyprotup("gelec",
+      "You see an extra neon purple shield fade into existance around you[.]");
+    define_stickyprotup("gcold",
+      "You see an extra frosty blue-white shield fade into existance around you[.]");
+    define_stickyprotup("gfire",
+      "You see an extra crackling red-orange shield fade into existance around you[.]");
+    define_stickyprotup("gasphyx",
+      "You see an extra swirling foggy white shield fade into existance around you[.]");
+    define_stickyprotup("gacid",
+      "You see an extra bubbling yellow shield fade into existance around you[.]");
+    define_stickyprotup("gpsi",
+      "You see an extra misty pale blue shield fade into existance around you[.]");
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// Small conjuprots
+    define_conjuwords("fabs", "^([A-Z][a-z]+) utters? the magic words 'ztonez des deckers'");
+    define_prots("fabs", "Fabs", "Force Absorption",
+      "",
+      "A skin brown flash momentarily surrounds you and then vanishes.",
+      1010, 0, 0, 0);
+    define_conjuwords("td", "^([A-Z][a-z]+) utters? the magic words 'morri nam pantoloosa'");
+    define_prots("td", "TD", "Toxic Dilution",
+      "",
+      "A green flash momentarily surrounds you and then vanishes.",
+      1010, 0, 0, 0);
+    define_conjuwords("md", "^([A-Z][a-z]+) utters? the magic words 'meke tul magic'");
+    define_prots("md", "MD", "Magic Dispersion",
+      "",
+      "A golden flash momentarily surrounds you and then vanishes.",
+      1010, 0, 0, 0);
+    define_conjuwords("ec", "^([A-Z][a-z]+) utters? the magic words 'kablaaaammmmm bliitz zundfer'");
+    define_prots("ec", "EC", "Energy Channeling",
+      "",
+      "A crackling blue flash momentarily surrounds you and then vanishes.",
+      1010, 0, 0, 0);
+    define_conjuwords("fi", "^([A-Z][a-z]+) utters? the magic words 'skaki barictos yetz fiil'");
+    define_prots("fi", "FI", "Frost Insulation",
+      "",
+      "A cold white flash momentarily surrounds you and then vanishes.",
+      1010, 0, 0, 0);
+    define_conjuwords("hr", "^([A-Z][a-z]+) utters? the magic words 'hot hot not zeis daimons'");
+    define_prots("hr", "HR", "Heat Reduction",
+      "",
+      "A burning red flash momentarily surrounds you and then vanishes.",
+      1010, 0, 0, 0);
+    define_conjuwords("eb", "^([A-Z][a-z]+) utters? the magic words 'qor monoliftus'");
+    define_prots("eb", "EB", "Ether Boundary",
+      "",
+      "A dull black flash momentarily surrounds you and then vanishes.",
+      1010, 0, 0, 0);
+    define_conjuwords("cs", "^([A-Z][a-z]+) utters? the magic words 'sulphiraidzik hydrochloodriz gidz zuf'");
+    define_prots("cs", "CS", "Corrosion Shield",
+      "",
+      "A disgusting yellow flash momentarily surrounds you and then vanishes.",
+      1010, 0, 0, 0);
+    define_conjuwords("ps", "^([A-Z][a-z]+) utters? the magic words 'toughen da mind reeez un biis'");
+    define_prots("ps", "PS", "Psychic Sanctuary",
+      "",
+      "A transparent flash momentarily surrounds you and then vanishes.",
+      1010, 0, 0, 0);
+    define_prots("sop", "SoP", "Shield of Protection",
+      "You feel a slight tingle[.]",
+      "You feel more vulnerable now",
+      0, 0, 0, 0);
+    define_prots("iw", "IW", "Iron Will",
+      "You feel protected from being stunned.",
+      "You feel no longer protected from being stunned",
+      0, 0, 0, 0);
+    define_prots("qsilver", "QSilver", "Quicksilver",
+      "You feel more agile",
+      "You feel less agile",
+      0, 0, 0, 0);
+    define_prots("blur", "Blur", "Blurred Image/Displacement",
+      "You feel a powerful aura",
+      "You feel (much )?less invisible",
+      600, 0, 1, 0);
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// Misc
+    define_prots("haste", "Haste", "Haste",
+      "The world seems to slow down.",
+      "The world seems to speed up.",
+      0, 0, 0, 0);
+    define_prots("infra", "Infra", "Infravision",
+      "You have infravision[.]",
+      "Everything no longer seems so red[.]",
+      0, 0, 1, 0);
+    define_prots("sinvis", "sinv", "See Invisible",
+      "You feel you can see more than ever",
+      "Your vision is less sensitive now",
+      0, 0, 0, 0);
+    define_prots("smagic", "SeeMagic", "See Magic",
+      "You can now see magical things",
+      "You are no longer sensitive to magical things",
+      0, 0, 0, 0);
+    define_prots("ev", "EV", "Enhanced Vitality",
+      "A bright light exctract from your hands covering your skin",
+      "Your skin stops glowing",
+      0, 0, 0, 0);
+    define_prots("rentropy", "REntropy", "Resist Entropy",
+      "You feel your life force expanding",
+      "You feel your hair is getting grayer",
+      0, 0, 0, 0);
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// psionicists
+    define_prots("psis", "PsiS", "Psionic Shield",
+      "Psionic waves surge through your body and mind!",
+      "The psionic shield vanishes",
+      0, 0, 0, 0);
+    define_prots("fsh", "FSh", "Force Shield",
+      "[A-Z][a-z]+ forms? a( psionic)? shield of force around you(r body)?",
+      "Your armour feels thinner",
+      0, 0, 0, 0);
+    define_prots("float", "Float", "Floating",
+      "You feel light, and rise into the air",
+      "You slowly descend until your feet are on the ground",
+      0, 0, 0, 0);
+    define_prots("deve", "MindDeve", "Mind Development",
+      "You feel your mind developing",
+      "Your brain suddenly seems smaller",
+      0, 0, 0, 0);
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// nuns
+    define_prots("pfe", "PfE", "Protection from Evil",
+      "[A-Za-z' ]+ with sheer power as you are surrounded by protective holy aura[.]",
+      "(You suddenly feel more vulnerable to evil|Your holy aura prevents you (from turning into a frog|being paralyzed) and is dispelled in the process)",
+      0, 0, 0, 0);
+    define_prots("rt", "RT", "Resist Temptation",
+      "[A-Za-z' ]+ with sheer power as you are surrounded by twinkling aura[.]",
+      "You feel more vulnerable against flips[.]",
+      0, 0, 0, 0);
+    define_prots("hprot", "HProt", "Heavenly Prot",
+      "[A-Za-z' ]+ as you are suddenly( surrounded( by)?)?",
+      "Holy particles slow down, rapidly fading away",
+      0, 0, 0, 0);
+    define_prots("souls", "SoulS", "Soul Shield",
+      "(You spiritually reach out for your soul, protecting it with holy force|[A-Z][a-z]+ places (his|her|its) hand over you and blesses your soul in the name of Las)[.]",
+      "Your soul feels suddenly more vulnerable[.]",
+      0, 0, 0, 0);
+    define_prots("manas", "ManaS", "Mana Shield",
+      "You feel your magical power expanding",
+      "Your life force seems weaker",
+      0, 0, 0, 0);
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// tarmalens
+    define_prots("unstun", "Us", "Unstun", 
+                 "^([A-Z][a-z]+)'s chanting appears to do absolutely nothing",
+                 "^It doesn't hurt as much as it normally does!",
+                 0, 1, 0, 0);
+    triggerManager.newTrigger("unstunweak",
+                              "^It doesn't hurt at all!",
+                              "$"+SCRIPT_NAME+".unstun weak",
+                              false, false, false, null, Font.PLAIN);
+
+    define_prots("link", "Link", "Life Link",
+                 "(You succeed. You create a link to|You create a link to|You feel somehow linked to) ([A-Z][a-z]+)[.]",
+//((You succeed[.] |)(You create a link to |You feel somehow linked to)) ([A-Z][a-z]+)[.]",
+                 "You hear a loud snap like sound!",
+                 1, 1, 0, 0);
+    define_prots("gangel", "GAngel", "Guardian Angel",
+      "A guardian angel arrives to protect you!",
+      "Your guardian angel cannot stay for longer and flies away",
+      0, 0, 0, 0);
+    define_prots("unpain", "Unp", "Unpain",
+      "You feel your will getting stronger",
+      "You feel your will returning to normal",
+      0, 0, 0, 0);
+    define_prots("bot", "BoT", "Blessing of Tarmalen",
+      "You feel strong - like you could carry the whole flat world on your back!",
+      "You feel weaker",
+      0, 0, 0, 0);
+    define_prots("ww", "WW", "Water walking",
+      "You feel light[.]",
+      "You feel heavier[.]$",
+      0, 0, 0, 0);
+    define_prots("link", "Link", "Life Link",
+      "",
+      "You hear a loud snap like sound!",
+      0, 0, 0, 0);
+    define_prots("seethelight", "Light", "See the light",
+      "Wow! Suddenly you see the Light!",
+      "You no longer see the light!",
+      0, 0, 0, 0);
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// druids
+    define_prots("rege", "Rege", "Regeneration",
+      "You feel your metabolism speed up",
+      "You no longer have a active regeneration spell on you",
+      0, 0, 0, 0);
+    define_prots("flex", "Flex", "Flex Shield",
+      "You sense a flex shield covering your body like a second skin",
+      "Your flex shield wobbles, PINGs and vanishes",
+      0, 0, 0, 0);
+    define_prots("epower", "EPower", "Earth Power",
+      "You feel your strength changing. You flex you muscles experimentally",
+      "The runic sigla '% !\\^' fade away.. leaving you feeling strange[.]",
+      0, 0, 0, 0);
+    define_prots("eblood", "EBlood", "Earth Blood",
+      "An icy chill runs through your veins",
+      "The runic sigla '![(] [*][)]' fade away.. leaving you feeling strange[.]",
+      0, 0, 0, 0);
+    define_prots("vine", "Vine", "Vine Mantle",
+      "Vines entangle your body",
+      "The vines around your body shrink[.]",
+      1320, 0, 1, 0);
+    define_prots("eskin", "ESkin", "Earth Skin",
+      "You feel your skin harden",
+      "Your skin feels softer",
+      0, 0, 1, 0);
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// bards
+    define_prots("war", "War", "War Ensemble",
+      "You feel full of battle rage! Victory is CERTAIN!",
+      "The effect of war ensemble wears off[.]",
+      1200, 0, 0, 1);
+    define_prots("favour", "Favour", "Arches Favour",
+      "You feel optimistic about your near future!",
+      "You no longer have Arches Favour on you[.] You feel sad[.]",
+      1200, 0, 0, 1);
+    define_prots("melody", "Melody", "Melodical Embracement",
+      "([A-Za-z ]+wraps you into an embracing melody|You embrace yourself with your melody)",
+      "The embracing melody subsides, leaving you longing for more",
+      1200, 0, 0, 1);
+    define_prots("cland", "Cland", "Clandestine Thoughts",
+      "\\\\[clandestine thought\\\\]: activated.*",
+      "\\\\[clandestine thought\\\\]: scanning ended.*",
+      1200, 0, 0, 0);
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// priests
+    define_prots("pfg", "PfG", "Protection from Good",
+      "A vile black aura surrounds you",
+      "You no longer have a vile black aura around you[.]",
+      0, 0, 0, 0);
+    define_prots("aoh", "AoH", "Aura of Hate",
+      "You feel burning hatred and rage erupt within you!",
+      "You feel your anger and hate of the world recede",
+      0, 0, 0, 0);
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// templars
+    define_prots("sof", "SoF", "Shield of Faith",
+      "You are surrounded by divine glow!",
+      "Your glow disappears",
+      0, 0, 0, 0);
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// channellers
+    define_prots("pff", "PFF", "Personal Force Field",
+      "You surround yourself by a bubble of force",
+      "Your field disperses with a soft [*]pop[*] and is gone",
+      0, 0, 0, 0);
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// spiders
+    define_prots("walk", "Walk", "Spider Walk",
+      "For some reason you want to run on the walls for a little while",
+      "The walls don't look so inviting anymore",
+      0, 0, 0, 0);
+    define_prots("touch", "Touch", "Spider Touch",
+      "Suddenly you don't feel too good Your blood feels like it is on fire",
+      "Your blood does not burn anymore",
+      0, 0, 0, 0);
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// tigers
+    define_prots("ffists", "FFists", "Flame Fists",
+      "Your fists are surrounded by Curath's black flames!",
+      "Your flaming fists disappear",
+      0, 0, 0, 0);
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// folklorists
+    define_prots("minprot", "MinorP", "Minor Protection",
+    "You feel slightly protected[.]", "The minor protection fades away.",
+      0, 0, 0, 0);
+    define_prots("zooprot", "ZooP", "Zoological Protection",
+      "You feel protected from animals.", "The zoological protection fades away.",
+      0, 0, 0, 0);
+    define_prots("cryzprot", "CryZooP", "Cryptozoological Protection",
+      "You feel protected from mythical creatures.", "The cryptozoological protection fades away.",
+      0, 0, 0, 0);
+    define_prots("kineprot", "KineZooP", "Kinemortological Protection",
+      "You feel protected from undeads.", "The kinemortological protection fades away.",
+      0, 0, 0, 0);
+    define_prots("raciprot", "RacP", "Racial Protection",
+      "You feel protected from [A-Za-z-]+[.]", "The racial protection fades away[.]",
+      0, 0, 0, 0);
+// define_prots(name, short, upmsg, downmsg, expire, noTiming, stacking, quietmode)
+// misc
+    define_prots("drage", "Rage", "Destructive rage",
+      "A veiled darkness descends over your eyes.  Sounds are oddly distorted,",
+      "Your massive build-up of rage slowly dissipates leaving you drained and",
+      0, 0, 0, 0);
+    define_prots("sdrain", "SDrain", "Spirit Drain",
+      "You draw some of .*'s spirit and use it to bolster your own!",
+      "The effects of the spirit drain leave you[.]",
+      0, 0, 0, 0);
+    define_prots("touch", "Touch", "Spider touch",
+      "Suddenly you don't feel too good. Your blood feels like it is on fire[.]",
+      "Your blood does not burn anymore",
+      0, 0, 0, 0);
+    define_prots("invis", "Invis", "Invisibility",
+      "You suddenly can't see yourself",
+      "You turn visible",
+      0, 0, 0, 0);
+    define_prots("curse", "Curse", "Stat Curse/Boost",
+      "",
+      "You shiver and feel strange",
+      0, 0, 0, 0);
+    define_prots("suppress", "Suppress", "Suppress Magic",
+      "Your feel excruciating pain in your head",
+      "You feel relieved[.]",
+      0, 0, 0, 0);
+    define_prots("forget", "Forget", "Forget",
+      "You feel rather empty-headed",
+      "A fog lifts from your mind. You can remember things clearly now",
+      0, 0, 0, 0);
+    define_prots("hallu", "Hallu", "Hallucination",
+      "",
+      "Your mind clears",
+      0, 0, 0, 0);
+    define_prots("enrage", "Rage", "Enrage",
+      "You start hooting and howling loudly and begin hopping around[.]",
+      "You no longer feel enraged[.]",
+      0, 0, 0, 0);
+    define_prots("pain", "Pain", "Pain threshold",
+      "You begin to concentrate on pain threshold[.]",
+      "Your concentration breaks and you feel less protected from physical damage[.]",
+      0, 0, 0, 0);
+    define_prots("glory", "Glory", "Glory of destruction",
+      "Your body swells in anticipation of the battles to come[.]",
+      "The destructive forces leave your body[.]",
+      0, 0, 0, 0);
+    define_prots("hw", "HW", "Heavy Weight",
+      "You suddenly feel magically heavier.",
+      "You feel lighter, but it doesn't seem to affect your weight!",
+      0, 0, 0, 0);
+    triggerManager.newTrigger("prot_sticky_hw",
+                              "^You feel magical forces binding the spell to you[.]",
+                              "$"+SCRIPT_NAME+".hw sticky",
+                              false, false, false, null, Font.PLAIN);
+
+/////////////////////////////////////////////////////////////////////////////
+// HAND MADE SPECIALS
+    triggerManager.newTrigger("dmp",
+                              "^You feel (much more vulnerable|unprotected)[.]$", 
+                              "$"+SCRIPT_NAME+".dmp",
+                              false, false, false, null, Font.PLAIN);
+    triggerManager.newTrigger("death",
+                              "^You can see Death, clad in black, collect your corpse[.]$", 
+                              "$"+SCRIPT_NAME+".death",
+                              false, false, false, null, Font.PLAIN);
+
+    // Conjuprots up, defined by spellwords.
+    triggerManager.newTrigger("prot_up_conjunorm", 
+                              "^You sense a powerful protective aura around you.",
+                              "$"+SCRIPT_NAME+".up conju",
+                              false, false, false, null, Font.PLAIN);
+    triggerManager.newTrigger("prot_up_conjusticky", 
+                              "^You sense an extra powerful protective aura around you.",
+                              "$"+SCRIPT_NAME+".stickyup conju",
+                              false, false, false, null, Font.PLAIN);
+
+
+    // Special handling for unstun and life link later
+
+    // Tweak
+    triggerManager.newTrigger("tweaks",
+                              "^@?[A-Z][a-z]+ tweaks? your( own)? nose mischievously.$",
+                              "$"+SCRIPT_NAME+" p",
+                              false, false, false, null, Font.PLAIN);
+
+    clientGUI.printText("general", "LOADED: prot ('$"+SCRIPT_NAME+".help' for more info.)\n");
+}

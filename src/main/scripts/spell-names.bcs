@@ -1,0 +1,573 @@
+/**
+ * spellnames.bcs - Spell naming trigger
+ * 
+ * This set of triggers appends the name of the spell to each cast, e.g.
+ * Dazzt utters the magic words 'Paxus' (unstun)
+ * 
+ * Report bugs to Dazzt. Colours are coming when the BatClient provides
+ * support for them.
+ */
+
+import java.util.*;
+import java.util.regex.*;
+import java.text.*;
+import com.mythicscape.batclient.interfaces.*;
+import java.awt.font.TextAttribute;
+import java.awt.Color;
+
+SCRIPT_NAME = "spellnames";
+
+/* User-modifiable settings */
+
+boolean SPELLCOLORS = true;     // Highlight spell words with color
+boolean DISPLAYCHANTS = false;  // Display spell chants?
+
+/* Colour definitions, a bit verbose */
+
+Map colors = new HashMap();
+colors.put("heal",       new Object[] { TextAttribute.FOREGROUND, new Color(0x00FF00) });
+colors.put("partyheal",  new Object[] { TextAttribute.FOREGROUND, new Color(0x00FF00) });
+colors.put("damage",     new Object[] { TextAttribute.FOREGROUND, new Color(0x14C814), TextAttribute.BACKGROUND, new Color(0x282828) });
+colors.put("areadamage", new Object[] { TextAttribute.FOREGROUND, new Color(0x14C814), TextAttribute.BACKGROUND, new Color(0x282828) });
+colors.put("utility",    new Object[] { TextAttribute.FOREGROUND, new Color(0x00FF00) });
+colors.put("teleport",   new Object[] { TextAttribute.FOREGROUND, new Color(0x00FF00) });
+colors.put("boost",      new Object[] { TextAttribute.FOREGROUND, new Color(0x00FF00) });
+colors.put("prot",       new Object[] { TextAttribute.FOREGROUND, new Color(0x00FF00) });
+colors.put("harm",       new Object[] { TextAttribute.FOREGROUND, new Color(0x14C814), TextAttribute.BACKGROUND, new Color(0x282828) });
+colors.put("field",      new Object[] { TextAttribute.FOREGROUND, new Color(0x00FFFF) });
+colors.put("stun",       new Object[] { TextAttribute.FOREGROUND, new Color(0xEE82EE) });
+colors.put("dest",       new Object[] { TextAttribute.FOREGROUND, new Color(0xFFFFFF), TextAttribute.BACKGROUND, new Color(0x800080) });
+
+Map damageTypeColors = new HashMap();
+damageTypeColors.put("phys",   new Object[] { TextAttribute.BACKGROUND, new Color(0x808000), TextAttribute.FOREGROUND, new Color(0x000000) });
+damageTypeColors.put("fire",   new Object[] { TextAttribute.BACKGROUND, new Color(0xFF0000), TextAttribute.FOREGROUND, new Color(0xFFFFFF) });
+damageTypeColors.put("cold",   new Object[] { TextAttribute.BACKGROUND, new Color(0x00BFFF), TextAttribute.FOREGROUND, new Color(0x000000) });
+damageTypeColors.put("elec",   new Object[] { TextAttribute.BACKGROUND, new Color(0xFFFF80), TextAttribute.FOREGROUND, new Color(0x000000) });
+damageTypeColors.put("acid",   new Object[] { TextAttribute.BACKGROUND, new Color(0x10FF10), TextAttribute.FOREGROUND, new Color(0x000000) });
+damageTypeColors.put("poison", new Object[] { TextAttribute.BACKGROUND, new Color(0x20C000), TextAttribute.FOREGROUND, new Color(0x000000) });
+damageTypeColors.put("asphyx", new Object[] { TextAttribute.BACKGROUND, new Color(0xFF00FF), TextAttribute.FOREGROUND, new Color(0x000000) });
+damageTypeColors.put("magic",  new Object[] { TextAttribute.BACKGROUND, new Color(0xFFFFFF), TextAttribute.FOREGROUND, new Color(0x000000) });
+damageTypeColors.put("psi",    new Object[] { TextAttribute.BACKGROUND, new Color(0x4080FF), TextAttribute.FOREGROUND, new Color(0x000000) });
+damageTypeColors.put("harm",   new Object[] { TextAttribute.BACKGROUND, new Color(0xC0C000), TextAttribute.FOREGROUND, new Color(0x000000) });
+
+/* End of settings */
+
+class Spell 
+{
+    public String name;
+    public Pattern pattern;
+    public Object[] attributeValuePairs;
+    
+    public Spell(String name, Pattern pattern, Object[] attributeValuePairs)
+    {
+        this.name = name;
+        this.pattern = pattern;
+        this.attributeValuePairs = attributeValuePairs;
+    }
+}
+
+LinkedList spells = new LinkedList();
+
+Object[] translateAttrs(String type, String damageType)
+{
+    if (!damageType.equals("none"))
+        return (damageTypeColors.containsKey(damageType) ? 
+            damageTypeColors.get(damageType) : 
+            new Object[] { TextAttribute.FOREGROUND, Color.LIGHT_GRAY });
+
+    return (colors.containsKey(type) ? 
+        colors.get(type) : 
+        new Object[] { TextAttribute.FOREGROUND, Color.LIGHT_GRAY });
+}
+
+void define(String name, String type, String damageType, String regexp)
+{
+    spells.add(new Spell(name, Pattern.compile(regexp + "$"), translateAttrs(type, damageType)));
+}
+
+ParsedResult trigger()
+{
+    String raw = argument.getStrippedText();
+    
+    // Performance optimization; don't process lines without " '" pattern
+    if (!raw.contains(" '"))
+        return null;
+    
+    String stripped = raw.trim();
+
+    Spell spell;
+    ListIterator iter = spells.listIterator();
+    boolean found = false;
+    while (iter.hasNext())
+    {
+        spell = (Spell)iter.next();
+
+        Matcher m = spell.pattern.matcher(stripped);
+        if (m.find())
+        {
+		argument.getAttributes().clear();
+	        argument.setStrippedText(stripped.substring(0, m.start() - 1) + " '" + spell.name + "'\n");
+	        
+	        int start = m.start();
+	        int end = stripped.length() + 2 + spell.name.length();
+	        	           
+                for (int i = 0; i < spell.attributeValuePairs.length; i+=2) {
+                    argument.addAttribute(spell.attributeValuePairs[i], spell.attributeValuePairs[i+1], start, end);
+	        }
+	        found = true;
+            break;
+        }
+    }
+    
+    // Performance optimization; move matched spells to the beginning of the list
+    // so that most common spells are found faster
+    if (found)
+    {
+        iter.remove();
+        spells.addFirst(spell);
+        return argument;
+    }
+    
+    return null;
+}
+
+
+void bootup()
+{
+    spells = new LinkedList();
+    
+    define("heal self",             "heal", "none", "'judicandus littleee'");
+    define("cure light wounds",     "heal", "none", "'judicandus mercuree'");
+    define("cure serious wounds",   "heal", "none", "'judicandus ignius'");
+    define("cure critical wounds",  "heal", "none", "'judicandus mangenic'");
+    define("minor heal",            "heal", "none", "'judicandus pzarcumus'");
+    define("major heal",            "heal", "none", "'judicandus pafzarmus'");
+    define("true heal",             "heal", "none", "'judicandus zapracus'");
+    define("half heal",             "heal", "none", "'pzzzar paf'");
+    define("heal",                  "heal", "none", "'pzzzarr'");
+    define("deaths door",           "heal", "none", "'mumbo jumbo'");
+    define("runic heal",            "heal", "none", "'!\\* \\*'");
+    define("heal body",             "heal", "none", "'ZAP ZAP ZAP!'");
+
+    define("remove poison",         "heal", "none", "'judicandus saugaiii'");
+    define("cure player",           "heal", "none", "'freudemas egoid'");
+    define("restore",               "heal", "none", "'Siwa on selvaa saastoa.'");
+    define("natural renewal",       "heal", "none", "'Naturallis Judicandus Imellys'");
+
+    define("raise dead",            "heal", "none", "'vokinsalak elfirtluassa'");
+    define("resurrection",          "heal", "none", "'tuo fo wen stanhc'");
+    define("new body",              "heal", "none", "'corpus novus foobar'");
+    define("reincarnation",         "heal", "none", "'henget uusix'");
+    define("reanimation",           "heal", "none", "'Blaarh ARGHAGHAHAHA URAAAH BELARGH!'");
+
+    define("venturers way",         "heal", "none", "'.a few steps to earthen might, a few steps.*");
+    define("shattered feast",       "heal", "none", "'That I have set free, return to me'");
+    define("laying on hands",       "heal", "none", "'Renew our strength'");
+
+// Party heal spells
+
+    define("minor party heal", "partyheal", "none", "'judicandus puorgo ignius'");
+    define("major party heal", "partyheal", "none", "'judicandus puorgo mangenic'");
+    define("true party heal",  "partyheal", "none", "'judicandus eurto mangenic'");
+    define("heal all",         "partyheal", "none", "'koko mudi kuntoon, hep'");
+    define("blessed warmth",   "partyheal", "none", "'! \\(\\*\\) !'");
+    define("campfire tune",    "partyheal", "none", "'What child is this, who laid to rest on Mary's.*");
+
+// Utility spells
+
+    define("paranoia",         "utility", "none", "'noxim delusa'");
+    define("identify relic",   "utility", "none", "'srR' Upon\\^nep'");
+    define("good berry",       "utility", "none", "'sezdaron montir'");
+    define("mirror image",     "utility", "none", "'peilikuvia ja lasinsirpaleita'");
+    define("floating disc",    "utility", "none", "'rex car bus xzar'");
+    define("light",            "utility", "none", "'ful'");
+    define("greater light",    "utility", "none", "'vas ful'");
+    define("darkness",         "utility", "none", "'na ful'");
+    define("greater darkness", "utility", "none", "'vas na ful'");
+    define("moon sense",       "utility", "none", "'daaa timaaa of daaa maaanth'");
+    define("see invisible",    "utility", "none", "'\\$%&@ #\\*%@\\*@# \\$&\\*@#'");
+    define("see magic",        "utility", "none", "'ahne paskianen olen ma kun taikuutta nahda tahdon'");
+    define("floating",         "utility", "none", "'rise Rise RISE'");
+    define("water walking",    "utility", "none", "'Jeeeeeeeeeeeesuuuuuuuus'");
+    define("replenish ally",   "utility", "none", "'enfuego delyo'");
+    define("drain ally",       "utility", "none", "'enfuego delmigo'");
+    define("enhance vision",   "utility", "none", "'isar avatap patyan'");
+    define("invisibility",     "utility", "none", "'\\.\\.\\.\\.\\. \\.\\.\\.\\. \\.\\.\\. \\.\\.  \\.    \\.'");
+    define("aura detection",   "utility", "none", "'fooohh haaahhh booooloooooh'");
+    define("feather weight",   "utility", "none", "'transformaticus minimus'");
+    define("floating letters", "utility", "none", "'lentavia lauseita'");
+    define("wizard eye",       "utility", "none", "'mad rad dar'");
+    define("all-seeing eye",   "utility", "none", "'tamakan natelo assim'");
+    define("levitation",       "utility", "none", "'etati elem ekam'");
+    define("there not there",  "utility", "none", "'jakki makupala'");
+    define("mental watch",     "utility", "none", "'kakakaaa  tsooon'");
+    define("mental glance",    "utility", "none", "'vaxtextraktdryck'");
+    define("spellteaching",    "utility", "none", "'moon fiksu, soot tyhma  - opi tasta taika'");
+    define("word of recall",   "utility", "none", "'vole love velo levo'");
+    define("call pigeon",      "utility", "none", "'habbi urblk'");
+    define("summon blade",     "utility", "none", "'ahieppa weaapytama nyttemmin'");
+    define("identify",         "utility", "none", "'mega visa huijari'");
+    define("remove scar",      "utility", "none", "'lkzaz zueei enz orn'");
+    define("infravision",      "utility", "none", "'demoni on pomoni'");
+    define("drain room",       "utility", "none", "'enfuegome delterra'");
+    define("drain item",       "utility", "none", "'enfuego delcosa'");
+    define("detect misery",    "utility", "none", "'misery ior noctar report'");
+    define("see the light",    "utility", "none", "'ogyawaelbirroh'");
+    define("satiate person",   "utility", "none", "'Creo Herbamus Satisfus'");
+    define("detect alignment", "utility", "none", "'annihilar hzzz golum'");
+    define("create money",     "utility", "none", "'roope ankka rulettaa'");
+    define("create food",      "utility", "none", "'juustoa ja pullaa, sita mun maha halajaa'");
+    define("transmute self",   "utility", "none", "'nihenuak assaam no nek orrek'");
+    define("life link",        "utility", "none", "'Corporem Connecticut Corporee'");
+    define("drain pool",       "utility", "none", "fiery golden runes in mid-air '\\$ !\\^'");
+    define("detect poison",    "utility", "none", "fiery blue sigla '\\$ !\\^'");
+    define("youth",            "utility", "none", "'Akronym Htouy, Hokrune Arafax'");
+    define("replenish energy", "utility", "none", "'!\\* %'");
+    define("clairvoyance",     "utility", "none", "'aalltyyuii regonza zirii'");
+    define("damn armament",    "utility", "none", "'Gawd DAMN IT!'");
+    define("sex change",       "utility", "none", "'likz az zurgeeon'");
+    define("charge staff",     "utility", "none", "'# !\\(");
+    define("shapechange",      "utility", "none", "'!\\('");
+    define("chaotic warp",     "utility", "none", "'weaapytama wezup boomie'");
+    define("transform golem",  "utility", "none", "'insignificus et gargantum alternos'");
+    define("remote banking",   "utility", "none", "'bat-o-mat'");
+    define("dragonify",        "utility", "none", "'mun enoni oli rakoni'");
+    define("tiger mask",       "utility", "none", "'Tiger Power!'");
+    define("detect race",      "utility", "none", "'taxonimus zoologica whaddahellizzat'");
+    define("kings feast",      "utility", "none", "'If you look behind a spider web, when it is covered with.*");
+    define("jesters trivia",   "utility", "none", "'Green skins, white skins, black skins, purple skins.*");
+    define("soothing sounds",  "utility", "none", "'Now that two decades gone by and I know that's a long.*");
+    define("achromatic eyes",  "utility", "none", "'Stand confused with lack of comprehension, pagan of.*");
+    define("vigilant melody",  "utility", "none", "'Lost I am not but knowledge I seek for there, my friend.*");
+    define("catchy singalong", "utility", "none", "'Shooting Star'");
+    define("spider servant",   "utility", "none", "'infernalicus conjuratis arachnidos'");
+    define("spider walk",      "utility", "none", "'Khizanth Arachnidus Walkitus'");
+    define("blade of fire",    "utility", "none", "'dsaflk aslfoir'");
+    define("transfer mana",    "utility", "none", "'\"\\) !#'");
+    define("venom blade",      "utility", "none", "'May this become the blood of the Spider queen'");
+    define("inquiry to ahm",   "utility", "none", "'!\\?'");
+    define("bless armament",   "utility", "none", "'Faerwon, grant your favor!'");
+    define("sweet lullaby",    "utility", "none", "'There is nothing you can do, when you realize with.*");
+    define("bless vial",       "utility", "none", "'Zanctum Zanctus Aqua'");
+    define("patch item",       "utility", "none", "'jimmiii fixiiii'");
+    define("cantrip",          "utility", "none", "'Vita non est vivere sed valere vita est'");
+    define("musicians alm",    "utility", "none", "'Donations welcome'");
+    define("singing shepherd", "utility", "none", "'Squirrel in the dirt, squirrel in the pool, squirrel don't get hurt, trying to stay cool!'");
+    define("arms lore",        "utility", "none", "'well, what have we here'");
+    define("monster lore",     "utility", "none", "'haven't I seen you before\\?'");
+    define("lift of load",     "utility", "none", "'Myh myh!'");
+    define("create herb",      "utility", "none", "'greeeenie fiiingerie'");
+    define("money is power",   "utility", "none", " \\${24}'");
+    define("preserve corpse",  "utility", "none", "'upo huurre helkama'");
+
+    define("create air armour", "utility", "none", "'bloozdy etherum errazam zunk'");
+    define("sounds of silence", "utility", "none", "'Hear this charm, there in the dark, lurking fiends.*");
+    define("wilderness location", "utility", "none", "'spirits of nature, show me the way!'");
+    define("clandestine thoughts", "utility", "none", "'To all the eyes around me, I wish to remain hidden, must I.*");
+    define("natural transformation", "utility", "none", "'@& \\^'");
+    define("protect weapon/armour/item", "utility", "none", "'blueeeeeeeeeee\\*\\*\\*\\*saka\\?\\?am!a'");
+    define("uncontrollable hideous laughter", "utility", "none", "'nyuk nyuk nyuk'");
+
+    define("spider demon conjuration",     "utility", "none", "'arachnid infernalicus arachnoidus demonicus'");
+    define("spider demon channeling",      "utility", "none", "'infernalicus nexus arachnid rex'");
+    define("spider demon control",         "utility", "none", "'infernalicus domus arachnid rex'");
+    define("prayer to the spider queen",   "utility", "none", "'Khizanth Arachnidus Satisfusmus'");
+    define("spider demon mass sacrifice",  "utility", "none", "'infernalicus domus arachnid rex magnos'");
+    define("spider demon banishment",      "utility", "none", "'infernalicus thanatos arachnidos'");
+    define("spider demon inquiry",         "utility", "none", "'Khirsah Zokant Arachnidus'");
+    define("elemental soul ward",         "utility", "none", "'Beware the big bad troll!'");
+
+// Fields
+
+    define("force dome",       "field", "none", "'xulu tango charlie'");
+    define("imprisonment",     "field", "none", "'imprickening zang gah'");
+    define("field of fear",    "field", "none", "'wheeeaaaaaa oooooo'");
+    define("anti magic field", "field", "none", "'taikoja ma inhoan'");
+    define("electric field",   "field", "elec", "'Ziiiiiiiiit Ziiit Ziiiit'");
+    define("shelter",          "field", "none", "'withing thang walz'");
+    define("neutralize field", "field", "none", "'null, nill, noll, nutin'");
+    define("rain",             "field", "none", "'huku mopo huku'");
+    define("drying wind",      "field", "none", "'hooooooooooowwwwwwwwwwwlllllllllllllll'");
+    define("create mud",       "field", "none", "'# !#'");
+    define("field of light",   "field", "none", "'ja nyt kenka kepposasti nousee'");
+    define("celestial haven",  "field", "none", "'zeriqum'");
+
+// Offensive spells
+
+    define("magic missile",         "damage", "magic", "'gtzt zur fehh'");
+    define("summon lesser spores",  "damage", "magic", "'gtzt zur sanc'");
+    define("levin bolt",            "damage", "magic", "'gtzt zur semen'");
+    define("summon greater spores", "damage", "magic", "'gtzt mar nak semen'");
+    define("golden arrow",          "damage", "magic", "'gtzt mar nak grttzt'");
+
+    define("shocking grasp",        "damage", "elec", "'zot zur fehh'");
+    define("lightning bolt",        "damage", "elec", "'zot zur sanc'");
+    define("blast lightning",       "damage", "elec", "'zot zur semen'");
+    define("forked lightning",      "damage", "elec", "'zot mar nak semen'");
+    define("electrocution",         "damage", "elec", "'zot mar nak grttzt'");
+
+    define("disruption",            "damage", "acid", "'fzz zur fehh'");
+    define("acid wind",             "damage", "acid", "'fzz zur sanc'");
+    define("acid arrow",            "damage", "acid", "'fzz zur semen'");
+    define("acid ray",              "damage", "acid", "'fzz mar nak semen'");
+    define("acid blast",            "damage", "acid", "'fzz mar nak grttzt'");
+
+    define("flame arrow",           "damage", "fire", "'fah zur fehh'");
+    define("firebolt",              "damage", "fire", "'fah zur sanc'");
+    define("fire blast",            "damage", "fire", "'fah zur semen'");
+    define("meteor blast",          "damage", "fire", "'fah mar nak semen'");
+    define("lava blast",            "damage", "fire", "'fah mar nak grttzt'");
+
+    define("thorn spray",           "damage", "poison", "'krkx zur fehh'");
+    define("poison blast",          "damage", "poison", "'krkx zur sanc'");
+    define("venom strike",          "damage", "poison", "'krkx zur semen'");
+    define("power blast",           "damage", "poison", "'krkx mar nak semen'");
+    define("summon carnal spores",  "damage", "poison", "'krkx mar nak grttzt'");
+
+    define("vacuumbolt",            "damage", "asphyx", "'ghht zur fehh'");
+    define("suffocation",           "damage", "asphyx", "'ghht zur sanc'");
+    define("chaos bolt",            "damage", "asphyx", "'ghht zur semen'");
+    define("strangulation",         "damage", "asphyx", "'ghht mar nak semen'");
+    define("blast vacuum",          "damage", "asphyx", "'ghht mar nak grttzt'");
+
+    define("mind blast",            "damage", "psi", "'omm zur fehh'");
+    define("psibolt",               "damage", "psi", "'omm zur sanc'");
+    define("psi blast",             "damage", "psi", "'omm zur semen'");
+    define("mind disruption",       "damage", "psi", "'omm mar nak semen'");
+    define("psychic crush",         "damage", "psi", "'tora tora tora'");
+
+    define("chill touch",           "damage", "cold", "'cah zur fehh'");
+    define("flaming ice",           "damage", "cold", "'cah zur sanc'");
+    define("darkfire",              "damage", "cold", "'cah zur semen'");
+    define("icebolt",               "damage", "cold", "'cah mar nak semen'");
+    define("cold ray",              "damage", "cold", "'cah mar nak grttzt'");
+
+    define("con fioco",             "damage", "fire", "'AeaH\\*h\\*\\*\\*Gdg'");
+    define("noituloves dischord",   "damage", "phys", "'dIsCHoRD'");
+    define("dancing blades",        "damage", "phys", "'Dance my little blades, whip my enemies for I am.*");
+
+    define("channelbolt",           "damage", "elec",  "'tsaibaa'");
+    define("channelball",           "damage", "magic", "'shar ryo den\\.\\.\\.Haa!'");
+    define("channelburn",           "damage", "fire",  "'grhagrhagrhagrah gra gra Hyaa!'");
+    define("channelray",            "damage", "magic", "'lecaps meeb nonnock'");
+    define("channelspray",          "damage", "fire",  "'grinurb sdan imflagrum'");
+    define("drain enemy",           "damage", "none",  "'enfuego delvivendo'");
+
+    define("cause light wounds",    "damage", "harm", "'tosi pieni neula'");
+    define("cause serious wounds",  "damage", "harm", "'rhuuuumm angotz amprltz'");
+    define("cause critical wounds", "damage", "harm", "'rhuuuumm angotz klekltz'");
+    define("hemorrhage",            "damage", "harm", "'yugzhrr'");
+    define("aneurysm",              "damage", "harm", "'yugzhrr paf'");
+    define("harm body",             "damage", "harm", "'PAF PAF PAF!'");
+    define("half harm",             "damage", "harm", "'ruotsalainen ensiapu'");
+    define("harm",                  "damage", "harm", "'puujalka jumalauta'");
+
+    define("word of attrition",     "damage", "magic",  "'khozak'");
+    define("word of destruction",   "damage", "magic",  "'Sherpha!'");
+    define("word of blasting",      "damage", "magic",  "'hraugh'");
+    define("word of genocide",      "damage", "magic",  "'dephtua'");
+    define("word of slaughter",     "damage", "magic",  "'niinr'");
+    define("word of spite",         "damage", "magic",  "'torrfra'");
+    define("word of oblivion",      "damage", "magic",  "'FRONOX!!'");
+    define("black hole",            "damage", "asphyx", "'Azzarakk, take this sacrifice I offer thee!'");
+
+    define("gem fire",              "damage", "fire",  "gem '& \\^'");
+    define("hoar frost",            "damage", "cold",  "ice crystal '& \\^'");
+    define("star light",            "damage", "magic", "'!\\( !!'");
+    define("wither flesh",          "damage", "magic", "'\"# \\^'");
+
+    define("dispel evil",           "damage", "magic", "'Ez' div'");
+    define("dispel good",           "damage", "magic", "'whoosy banzziii pal eeeiizz dooneb'");
+    define("dispel undead",         "damage", "magic", "'Sanctum disqum'");
+    define("holy bolt",             "damage", "magic", "'Sanctum circum'");
+    define("holy hand",             "damage", "magic", "'Sanctus inxze'");
+    define("saintly touch",         "damage", "magic", "'Exzorde' ?'");
+    define("banish demons",         "damage", "magic", "'Satan down'");
+    define("wrath of las",          "damage", "fire",  "' Lassum  '");
+
+    define("spider wrath",          "damage", "poison", "'Khizanth Arachnidus Iracundus'");
+    define("hunger of the spider",  "damage", "poison", "'Khizanth Arachnidus Vitalis'");
+
+// Area spells
+
+    define("meteor swarm",          "areadamage", "fire",   "'fah zur semen gnatlnamauch'");
+    define("magic wave",            "areadamage", "magic",  "'gtzt zur semen gnatlnamauch'");
+    define("vacuum ball",           "areadamage", "asphyx", "'ghht zur semen gnatlnamauch'");
+    define("cone of cold",          "areadamage", "cold",   "'cah zur semen gnatlnamauch'");
+    define("chain lightning",       "areadamage", "elec",   "'zot zur semen gnatlnamauch'");
+    define("acid rain",             "areadamage", "acid",   "'fzz zur semen gnatlnamauch'");
+    define("poison spray",          "areadamage", "poison", "'krkx zur semen gnatlnamauch'");
+    define("psychic shout",         "areadamage", "psi",    "'omm zur semen gnatlnamauch'");
+
+    define("fireball",              "areadamage", "fire", "'zing yulygul bugh'");
+
+    define("lava storm",            "areadamage", "fire",   "'fah mar nak grttzt gnatlnamauch'");
+    define("magic eruption",        "areadamage", "magic",  "'gtzt mar nak grttzt gnatlnamauch'");
+    define("vacuum globe",          "areadamage", "asphyx", "'ghht mar nak grttzt gnatlnamauch'");
+    define("hailstorm",             "areadamage", "cold",   "'cah mar nak grttzt gnatlnamauch'");
+    define("lightning storm",       "areadamage", "elec",   "'zot mar nak grttzt gnatlnamauch'");
+    define("acid storm",            "areadamage", "acid",   "'fzz mar nak grttzt gnatlnamauch'");
+    define("killing cloud",         "areadamage", "poison", "'krkx mar nak grttzt gnatlnamauch'");
+    define("psychic storm",         "areadamage", "psi",    "'omm mar nak grttzt gnatlnamauch'");
+
+    define("summon storm",          "areadamage", "cold",  "\\*\\* /\\|/");
+    define("earthquake",            "areadamage", "magic", "'%'");
+    define("holy wind",             "areadamage", "magic", "'Rev 'liz'");
+    define("noituloves deathlore",  "areadamage", "magic", "'Thar! Rauko! Mor! Ris-Rim! Fuin-Heru! GOR! Gurthgwath!n'");
+    define("flames of righteousness", "areadamage", "magic", "'ex'domus naz'");
+
+// Teleportation spells
+
+    define("summon",                 "teleport", "none", "'gwwaaajj'");
+    define("teleport without error", "teleport", "none", "'xafe ayz xckgandhuzqarr'");
+    define("teleport with error",    "teleport", "none", "'xafe xyyqh xckgandhuzqarr'");
+    define("relocate",               "teleport", "none", "'xafe uurthq'");
+    define("go",                     "teleport", "none", "'flzeeeziiiiying nyyyaaa'");
+    define("mobile cannon",          "teleport", "none", "'buuuummbzdiiiiiibummm'");
+    define("dimension door",         "teleport", "none", "'prtolala offf pwerrrr'");
+    define("banish",                 "teleport", "none", "'havia kauhistus pois'");
+    define("party banish",           "teleport", "none", "'etsi poika pippuria'");
+    define("mind store",             "teleport", "none", "'memono locati'");
+    define("pathfinder",             "teleport", "none", "'Fo fu fe fum, Lord of the Winds, I know Thy.*");
+    define("holy way",               "teleport", "none", "'Avee Alee adudaaa..'");
+    define("goto ship",              "teleport", "none", "'etheria aquariq [a-z]+'");
+
+    define("escape velocity",        "teleport", "none", "'fzeziiignya'");
+    define("slingshot vortex",       "teleport", "none", "'aiwuhfiueh'");
+    define("dimensional vacuum",     "teleport", "none", "'uoogachucka'");
+    define("planar gate",            "teleport", "none", "'pqwioeu aslkdjfh zxmcb'");
+
+// Boost spells
+
+    define("arches favour",         "boost", "none", "'In the Shadows cast down by the moon, a.*");
+    define("melodical embracement", "boost", "none", "'Once there were two knights and maidens They'd walk together.*");
+    define("war ensemble",          "boost", "none", "'War is TOTAL massacre, sport the war, war SUPPOORT!!!'");
+    define("psionic shield",        "boost", "none", "'niihek atierapip aj niiramaan aaffaj'");
+    define("unpain",                "boost", "none", "'harnaxan temnahecne'");
+    define("blessing of tarmalen",  "boost", "none", "'nilaehz arzocupne'");
+    define("mind development",      "boost", "none", "'Annatheer graaweizta'");
+    define("unstable mutation",     "boost", "none", "'ragus on etsat mumixam!'");
+    define("energy aura yellow",    "boost", "none", "'hhhnnnnnrrrrraaahhh!!'");
+    define("energy aura red",       "boost", "none", "'hnnn\\.\\.\\.\\.Urrgggg\\.\\.\\.\\.\\.RRAAHH!!!'");
+    define("energy aura blue",      "boost", "none", "'RRRRAAAAAHHRRRRGGGGGGHHH!!!!!'");
+    define("earth blood",           "boost", "none", "'!\\( \\*\\)");
+    define("earth power",           "boost", "none", "'% !\\^'");
+    define("regeneration",          "boost", "none", "'nilaehz temnahecne'");
+    define("haste",                 "boost", "none", "'sakenoivasta voimasta'");
+    define("aura of hate",          "boost", "none", "'Feel your anger and strike with.*");
+
+    define("artificial intelligence",  "boost", "none", "'nitin mof'");
+    define("aura of power",            "boost", "none", "'noccon mof'");
+    define("awareness",                "boost", "none", "'siwwis mof'");
+    define("giant strength",           "boost", "none", "'rtsstr mof'");
+    define("flame fists",              "boost", "none", "'Polo Polomii'");
+    define("glory of destruction",     "boost", "none", "'Grant me the power, the fire from within'");
+    define("blessing of intoxication", "boost", "none", "'I'm drunbk and I am all powerfuly!'");
+
+// Prot spells
+
+    define("resist temptation",         "prot", "none",   "'qxx'rzzzz'");
+    define("resist disintegrate",       "prot", "none",   "'bii thee dzname uv tii blaaaz drazon'");
+    define("vine mantle",               "prot", "none",   "'\"\" !#");
+    define("strength in unity",         "prot", "none",   "'You say you don't believe this unity will last,.*");
+    define("protection from aging",     "prot", "none",   "'Tempora Rolex Timex'");
+    define("unstun",                    "prot", "none",   "'Paxus'");
+    define("lessen poison",             "prot", "none",   "'Impuqueto es Bien'");
+    define("protection from evil",      "prot", "none",   "'sanctus Exzordus'");
+    define("protection from good",      "prot", "none",   "'Good is dumb'");
+    define("flex shield",               "prot", "none",   "'\\^ !\\)");
+    define("force shield",              "prot", "none",   "'thoiiiiiisss huuuiahashn'");
+    define("personal force field",      "prot", "none",   "'riljya'");
+    define("earth skin",                "prot", "none",   "'% !\\('");
+    define("soul hold",                 "prot", "none",   "'naxanhar hecnatemne'");
+    define("guardian angel",            "prot", "none",   "'Judicandee iocus merciaa Tarmalen'");
+    define("shield of faith",           "prot", "none",   "'Grant your worshipper your protection'");
+    define("soul shield",               "prot", "none",   "'sanctus angeliq'");
+    define("enhanced vitality",         "prot", "none",   "'zoot zoot zoot'");
+    define("resist dispel",             "prot", "none",   "'zicks laai qluu'");
+    define("iron will",                 "prot", "none",   "'nostaaaanndiz noszum'");
+    define("shield of protection",      "prot", "none",   "'nsiiznau'");
+    define("blurred image",             "prot", "none",   "'ziiiuuuuns wiz'");
+    define("displacement",              "prot", "none",   "'diiiiuuunz aaanziz'");
+    define("force absorption",          "prot", "phys",   "'ztonez des deckers'");
+    define("toxic dilution",            "prot", "poison", "'morri nam pantoloosa'");
+    define("heat reduction",            "prot", "fire",   "'hot hot not zeis daimons'");
+    define("magic dispersion",          "prot", "magic",  "'meke tul magic'");
+    define("energy channeling",         "prot", "elec",   "'kablaaaammmmm bliitz zundfer'");
+    define("corrosion shield",          "prot", "acid",   "'sulphiraidzik hydrochloodriz gidz zuf'");
+    define("ether boundary",            "prot", "asphyx", "'qor monoliftus'");
+    define("frost insulation",          "prot", "cold",   "'skaki barictos yetz fiil'");
+    define("psychic sanctuary",         "prot", "psi",    "'toughen da mind reeez un biis'");
+    define("armour of aether",          "prot", "phys",   "'fooharribah inaminos cantor'");
+    define("shield of detoxification",  "prot", "poison", "'nyiaha llaimay exchekes ployp'");
+    define("flame shield",              "prot", "fire",   "'huppa huppa tiki tiki'");
+    define("repulsor aura",             "prot", "magic",  "'shamarubu incixtes delfo'");
+    define("lightning shield",          "prot", "elec",   "'ohm'");
+    define("acid shield",               "prot", "acid",   "'hfizz hfizz nglurglptz'");
+    define("aura of wind",              "prot", "asphyx", "'englobo globo mc'pop'");
+    define("frost shield",              "prot", "cold",   "'nbarrimon zfettix roi'");
+    define("psionic phalanx",           "prot", "psi",    "'all for one, gather around me'");
+    define("heavy weight",              "prot", "none",   "'tonnikalaa'");
+    define("resist entropy",            "prot", "none",   "'Ourglazz Schmourglazz'");
+    define("last rites",                "prot", "none",   "'Ab sinestris, mortum demitteri'");
+    define("heavenly protection",       "prot", "none",   "'sanctus . o O'");
+    define("quicksilver",               "prot", "none",   "'jumpiiz laika wabbitzz'");
+    define("blessing of faerwon",       "prot", "none",   "'Benedic, Faerwon, nos et haec tua dona.*");
+    define("reflector shield",          "prot", "none",   "'sakat ikkiak satsjaieh'");
+    define("mana shield",               "prot", "none",   "'nullum driiiks umbah mana'");
+    define("shadow armour",             "prot", "none",   "'klainmox'");
+    define("stoneskin",                 "prot", "none",   "'aflitruz'");
+    define("resist gaseous form",       "prot", "none",   "'Break like the wind'");
+
+// Harming spells
+
+    define("degenerate person",   "harm", "none", "'kewa dan dol rae hout'");
+    define("poison",              "harm", "none", "'saugaiii'");
+    define("forget",              "harm", "none", "'sulta taiat pois, mulle hyva mieli taikadaikaduu'");
+    define("make scar",           "harm", "none", "'viiltaja jaska'");
+    define("entropy",             "harm", "none", "'vaka vanha vainamoinen'");
+    define("area entropy",        "harm", "none", "'vaka tosi vanha vainamoinen'");
+    define("psychic purge",       "harm", "none", "'aamad ato naav aanarub atyak ala'");
+    define("terror",              "harm", "none", "'BBBBOOOOOO!!!!'");
+    define("mana drain",          "harm", "none", "'I HATE MAGIC'");
+    define("flip",                "harm", "none", "'jammpa humppa ryydy mopsi'");
+    define("hallucination",       "harm", "none", "'huumeet miehen tiella pitaa'");
+    define("curse of ogre",       "harm", "none", "'rtsstr uurthg'");
+    define("disease",             "harm", "none", "'noccon uurthg'");
+    define("feeblemind",          "harm", "none", "'nitin uurthg'");
+    define("amnesia",             "harm", "none", "'siwwis uurthg'");
+    define("wither",              "harm", "none", "'xeddex uurthg'");
+    define("life leech",          "harm", "none", "'gimme urhits'");
+    define("energy drain",        "harm", "none", "'yugfzhrrr suuck suuuuuck suuuuuuuuuuck'");
+    define("curse",               "harm", "none", "'oli isa-sammakko, aiti-sammakko ja PIKKU-SAMMAKKO!!'");
+    define("mellon collie",       "harm", "none", "'Zmasching Pupkins's infanitsadnnes'");
+    define("pestilence",          "harm", "none", "'Harken to me and hear my plea, disease is what I call to thee'");
+    define("curse of tarmalen",   "harm", "none", "'nilaehz temnahecne neg'");
+    define("suppress magic",      "harm", "none", "'voi hellapoliisin kevatnuija'");
+    define("energy vortex",       "harm", "none", "'incantar enfeugo aggriva'");
+    define("spider touch",        "harm", "none", "'Khizanth Arachnidus Diametricus'");
+    define("permanent skill drain", "harm", "none", "'nyyjoo happa hilleiksis'");
+    define("permanent spell drain", "harm", "none", "'nyyjoo happa helleipsis'");
+    define("dispel magical protection", "harm", "none", "'removezzzzzarmour'");
+
+// Stun spells
+
+    define("paralyze",            "stun", "none", "'vorek ky taree'");
+    define("mindseize",           "stun", "none", "'diir mieelis sxil miarr mieelin'");
+    define("tiger claw",          "stun", "none", "'Haii!'");
+
+// Dest spells
+
+    define("disintegrate",    "dest", "none", "'sahanpurua'");
+    define("acquisition",     "dest", "none", "'mesmr pulrl metism'");
+    define("destroy weapon",  "dest", "none", "'rikki ja poikki'");
+    define("destroy armour",  "dest", "none", "'se on sarki nyt'");
+    define("immolate",        "dest", "none", "'fah relep krlnpth'");
+}
+
+void run()
+{
+}
+
+
+ 
