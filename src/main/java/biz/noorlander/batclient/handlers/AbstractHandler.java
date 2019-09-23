@@ -1,5 +1,7 @@
 package biz.noorlander.batclient.handlers;
 
+import biz.noorlander.batclient.model.WindowsConfig;
+import com.mythicscape.batclient.interfaces.BatWindow;
 import com.mythicscape.batclient.interfaces.ClientGUI;
 import com.mythicscape.batclient.interfaces.ParsedResult;
 
@@ -22,5 +24,9 @@ public abstract class AbstractHandler {
 
     void command(String command) {
         this.gui.doCommand(command);
+    }
+
+    BatWindow createWindow(String windowName, WindowsConfig config) {
+        return this.gui.createBatWindow(windowName, config.getLeft(), config.getTop(), config.getWidth(), config.getHeight());
     }
 }

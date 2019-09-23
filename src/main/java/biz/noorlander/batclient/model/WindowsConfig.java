@@ -21,8 +21,8 @@ public class WindowsConfig extends AbstractConfig {
 
 	int top = 0;
 	int left = 0;
-	int width = 0;
-	int height = 0;
+	int width = 200;
+	int height = 50;
 	boolean visible = true;
 	public int getTop() {
 		return top;
@@ -62,12 +62,10 @@ public class WindowsConfig extends AbstractConfig {
 	
 	@Override
 	public String toString() {
-		StringBuilder builder = new StringBuilder("\"windowsconfig\" { \n");
-		builder.append("    \"left:\", ").append(left).append(",\n");
-		builder.append("    \"top:\", ").append(top).append(",\n");
-		builder.append("    \"width:\", ").append(width).append(",\n");
-		builder.append("    \"height:\", ").append(height).append(",\n");
-		builder.append("    \"visible:\", \"").append(visible).append("\"\n}");
-		return builder.toString();
+		return "\"windowsconfig\" { \n" + "    \"left:\", " + left + ",\n" +
+				"    \"top:\", " + top + ",\n" +
+				"    \"width:\", " + width + ",\n" +
+				"    \"height:\", " + height + ",\n" +
+				"    \"visible:\", \"" + visible + "\"\n}";
 	}
 }
