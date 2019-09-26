@@ -39,12 +39,14 @@ public class PlayerStatsFrame {
     private JLabel conDiff;
     private JLabel dexDiff;
     private JLabel strDiff;
+    private JButton saveDefaults;
 
     public PlayerStatsFrame(ActionListener listener) {
         super();
         combatButton.addActionListener(listener);
         regenButton.addActionListener(listener);
         buffButton.addActionListener(listener);
+        saveDefaults.addActionListener(listener);
     }
 
     public EqSet convertToEqSet(String eqSetName) {
@@ -172,7 +174,7 @@ public class PlayerStatsFrame {
         GridBagConstraints gbc;
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
-        gbc.gridy = 6;
+        gbc.gridy = 7;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         playerStatsPanel.add(regenButton, gbc);
         buffButton = new JButton();
@@ -183,7 +185,7 @@ public class PlayerStatsFrame {
         buffButton.setText("Buff");
         gbc = new GridBagConstraints();
         gbc.gridx = 2;
-        gbc.gridy = 6;
+        gbc.gridy = 7;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         playerStatsPanel.add(buffButton, gbc);
         combatButton = new JButton();
@@ -199,7 +201,7 @@ public class PlayerStatsFrame {
         combatButton.setText("Combat");
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
-        gbc.gridy = 6;
+        gbc.gridy = 7;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         playerStatsPanel.add(combatButton, gbc);
         final JLabel label1 = new JLabel();
@@ -370,6 +372,40 @@ public class PlayerStatsFrame {
         gbc.anchor = GridBagConstraints.EAST;
         gbc.insets = new Insets(4, 4, 4, 8);
         playerStatsPanel.add(chaDiff, gbc);
+        saveDefaults = new JButton();
+        saveDefaults.setActionCommand("saveDefaults");
+        saveDefaults.setBackground(new Color(-14540254));
+        saveDefaults.setBorderPainted(false);
+        saveDefaults.setFocusPainted(false);
+        Font saveDefaultsFont = this.$$$getFont$$$(null, -1, 10, saveDefaults.getFont());
+        if (saveDefaultsFont != null) saveDefaults.setFont(saveDefaultsFont);
+        saveDefaults.setForeground(new Color(-4934476));
+        saveDefaults.setText("Save defaults");
+        gbc = new GridBagConstraints();
+        gbc.gridx = 1;
+        gbc.gridy = 6;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        playerStatsPanel.add(saveDefaults, gbc);
+    }
+
+    /**
+     * @noinspection ALL
+     */
+    private Font $$$getFont$$$(String fontName, int style, int size, Font currentFont) {
+        if (currentFont == null) return null;
+        String resultName;
+        if (fontName == null) {
+            resultName = currentFont.getName();
+        } else {
+            Font testFont = new Font(fontName, Font.PLAIN, 10);
+            if (testFont.canDisplay('a') && testFont.canDisplay('1')) {
+                resultName = fontName;
+            } else {
+                resultName = currentFont.getName();
+            }
+        }
+        return new Font(resultName, style >= 0 ? style : currentFont.getStyle(), size >= 0 ? size : currentFont.getSize());
     }
 
     /**

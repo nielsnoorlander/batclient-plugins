@@ -1,8 +1,10 @@
 package biz.noorlander.batclient.handlers;
 
+import biz.noorlander.batclient.model.CustomConfig;
 import biz.noorlander.batclient.model.PlayerStats;
 import biz.noorlander.batclient.model.WindowsConfig;
 import biz.noorlander.batclient.ui.PlayerStatsFrame;
+import biz.noorlander.batclient.utils.ConfigService;
 import biz.noorlander.batclient.utils.ParsedResultUtil;
 import com.mythicscape.batclient.interfaces.BatWindow;
 import com.mythicscape.batclient.interfaces.ClientGUI;
@@ -16,7 +18,6 @@ import java.util.regex.Pattern;
 public class PlayerStatsHandler extends AbstractHandler implements ActionListener {
 
 	private PlayerStats currentScore;
-    private PlayerStats baseScore;
 	private PlayerStatsFrame playerStatsFrame;
 	private BatWindow clientWin;
 	private WindowsConfig windowsConfig;
@@ -31,42 +32,51 @@ public class PlayerStatsHandler extends AbstractHandler implements ActionListene
         clientWin.newTab( "Status", playerStatsFrame.getPanel() );
         clientWin.setVisible( true );
         shortScoreStats = Pattern.compile("^EQ:[a-z0-9]+ STATS: ([A-Z][a-z]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([a-z ]+)/([0-9]+)/([a-z ]+)/([0-9]+)/([ A-z',]*)/([_a-z]*)/");
-        baseScore = loadBasePlayerStats();
         currentScore = loadBasePlayerStats();
-        this.playerStatsFrame.setBaseStats(this.baseScore);
+        this.playerStatsFrame.setBaseStats(loadBasePlayerStats());
 	}
 
     private PlayerStats loadBasePlayerStats() {
-        PlayerStats result = new PlayerStats();
+        PlayerStats result = new PlayerStats(CustomConfig.Name.PLAYER_STATS, this.getBaseDir());
         result.setCharisma(100);
-        result.setConstitution(206);
-        result.setDexterity(106);
-        result.setIntelligence(83);
+        result.setConstitution(100);
+        result.setDexterity(100);
+        result.setIntelligence(100);
         result.setName("Niliz");
-        result.setSize(65);
-        result.setStrength(114);
-        result.setWisdom(211);
-        return result;
+        result.setSize(100);
+        result.setStrength(100);
+        result.setWisdom(100);
+
+        return ConfigService.getInstance().loadCustomConfig(result);
     }
 
     @Override
 	public void actionPerformed(ActionEvent e) {
 		System.out.println("ActionEvent: " + e.getActionCommand());
-		PlayerStatsFrame.EqSet eqSet = playerStatsFrame.convertToEqSet(e.getActionCommand());
-		switch (eqSet) {
-			case COMBAT:
-				this.command("dam");
-				break;
-			case REGEN:
-				this.command("re");
-				break;
-			case BUFF:
-				this.command("wis");
-				break;
-			case NONE:
-			default:
-				this.command("remove all");
+		if ("saveDefaults".equals(e.getActionCommand())) {
+			saveStatsAsDefaults();
+			this.playerStatsFrame.setBaseStats(this.currentScore);
+		} else {
+			PlayerStatsFrame.EqSet eqSet = playerStatsFrame.convertToEqSet(e.getActionCommand());
+			switch (eqSet) {
+				case COMBAT:
+					this.command("dam");
+					break;
+				case REGEN:
+					this.command("re");
+					break;
+				case BUFF:
+					this.command("wis");
+					break;
+				case NONE:
+				default:
+					this.command("remove all");
+			}
 		}
+	}
+
+	private void saveStatsAsDefaults() {
+		ConfigService.getInstance().saveCustomConfig(this.currentScore);
 	}
 
 	public ParsedResult updatePlayerStats(ParsedResult output) {

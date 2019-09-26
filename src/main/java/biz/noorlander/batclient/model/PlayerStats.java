@@ -2,7 +2,7 @@ package biz.noorlander.batclient.model;
 
 import java.util.Objects;
 
-public class PlayerStats {
+public class PlayerStats extends CustomConfig {
     String name;
     int strength = 0;
     int dexterity = 0;
@@ -13,6 +13,10 @@ public class PlayerStats {
     int size = 0;
     String alignment = "neutral";
     String age = "very young";
+
+    public PlayerStats(Name configName, String baseDir) {
+        super(configName, baseDir);
+    }
 
     public String getName() {
         return name;

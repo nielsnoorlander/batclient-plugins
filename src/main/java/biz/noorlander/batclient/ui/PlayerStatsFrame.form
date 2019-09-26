@@ -12,7 +12,7 @@
     <children>
       <component id="bca97" class="javax.swing.JButton" binding="regenButton" default-binding="true">
         <constraints>
-          <grid row="6" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+          <grid row="7" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
           <gridbag weightx="0.0" weighty="0.0"/>
         </constraints>
         <properties>
@@ -25,7 +25,7 @@
       </component>
       <component id="59294" class="javax.swing.JButton" binding="buffButton" default-binding="true">
         <constraints>
-          <grid row="6" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+          <grid row="7" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
           <gridbag weightx="0.0" weighty="0.0"/>
         </constraints>
         <properties>
@@ -38,7 +38,7 @@
       </component>
       <component id="58d1d" class="javax.swing.JButton" binding="combatButton" default-binding="true">
         <constraints>
-          <grid row="6" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+          <grid row="7" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
           <gridbag weightx="0.0" weighty="0.0"/>
         </constraints>
         <properties>
@@ -238,6 +238,21 @@
         <properties>
           <foreground color="-4934476"/>
           <text value="-"/>
+        </properties>
+      </component>
+      <component id="d8474" class="javax.swing.JButton" binding="saveDefaults">
+        <constraints>
+          <grid row="6" column="1" row-span="1" col-span="2" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+          <gridbag weightx="0.0" weighty="0.0"/>
+        </constraints>
+        <properties>
+          <actionCommand value="saveDefaults"/>
+          <background color="-14540254"/>
+          <borderPainted value="false"/>
+          <focusPainted value="false"/>
+          <font size="10"/>
+          <foreground color="-4934476"/>
+          <text value="Save defaults"/>
         </properties>
       </component>
     </children>

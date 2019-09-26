@@ -7,11 +7,11 @@ public class WindowsConfig extends AbstractConfig {
 	private static final String PREFIX_WINDOWS = "window-";
 
 	public <T extends BatClientPlugin> WindowsConfig(T plugin) {
-		super(plugin);
+		super(plugin.getName(), plugin.getBaseDirectory());
 	}
 
 	public <T extends BatClientPlugin> WindowsConfig(T plugin, BatWindow clientWin) {
-		super(plugin);
+		super(plugin.getName(), plugin.getBaseDirectory());
 		this.left = clientWin.getLocation().x;
 		this.top = clientWin.getLocation().y;
 		this.width = clientWin.getSize().width;

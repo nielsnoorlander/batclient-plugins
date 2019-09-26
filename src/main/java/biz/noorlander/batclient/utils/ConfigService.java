@@ -5,7 +5,9 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.Type;
 
+import biz.noorlander.batclient.model.CustomConfig;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonIOException;
@@ -15,7 +17,6 @@ import com.mythicscape.batclient.interfaces.BatClientPlugin;
 import biz.noorlander.batclient.model.WindowsConfig;
 
 public class ConfigService {
-
 	private Gson gson;
 	private ConfigService() {
 		this.gson = new GsonBuilder()
@@ -46,6 +47,42 @@ public class ConfigService {
 			return config;
 		}
 	}
+
+	public <T extends CustomConfig> T loadCustomConfig(T config) {
+		try {
+			return gson.fromJson(new FileReader(config.getConfigFile()), (Type) config.getClass());
+		} catch (FileNotFoundException e) {
+			System.err.println("Unable to read custom config from: " + config.getConfigFile().getPath());
+			e.printStackTrace();
+			return config;
+		}
+	}
+
+	public <T extends CustomConfig> void saveCustomConfig(T config) {
+		File configFile = config.getConfigFile();
+		FileWriter fileWriter = null;
+		try {
+			if (configFile.createNewFile()) {
+				System.out.println("Created new configFile: " + configFile.getPath());
+			}
+			fileWriter = new FileWriter(configFile);
+			gson.toJson(config, fileWriter);
+		} catch (IOException e) {
+			System.err.println("Unable to create configFile: " + e.getMessage());
+			e.printStackTrace();
+		} finally {
+			if (fileWriter != null) {
+				try {
+					fileWriter.flush();
+					fileWriter.close();
+				} catch (IOException e) {
+					System.err.println("Unable to flush/close configFile: " + e.getMessage());
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
 	public <T extends BatClientPlugin> void saveWindowsConfig(T plugin, WindowsConfig windowsConfig) {
 		File configFile = new WindowsConfig(plugin).getConfigFile();
 		FileWriter fileWriter = null;

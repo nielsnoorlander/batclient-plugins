@@ -26,6 +26,9 @@ public abstract class AbstractHandler {
         this.gui.doCommand(command);
     }
 
+    String getBaseDir() {
+        return gui.getBaseDirectory();
+    }
     BatWindow createWindow(String windowName, WindowsConfig config) {
         return this.gui.createBatWindow(windowName, config.getLeft(), config.getTop(), config.getWidth(), config.getHeight());
     }
