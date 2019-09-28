@@ -7,26 +7,26 @@ import com.mythicscape.batclient.interfaces.BatClientPlugin;
 public abstract class AbstractConfig {
 	private static final String POSTFIX_CONFIG = ".config";
 
-	private String pluginName;
+	private String configName;
 	private transient String baseDir;
 	
-	public <T extends BatClientPlugin> AbstractConfig(T plugin) {
-		this.pluginName = plugin.getName();
-		this.baseDir = plugin.getBaseDirectory();
+	public AbstractConfig(String configName, String baseDir) {
+		this.configName = configName;
+		this.baseDir =baseDir;
 	}
 	
 	public abstract String getPrefix();
 	
 	public File getConfigFile() {
-		File configFile = new File(new File(this.baseDir, "conf").getPath(), getPrefix() + this.pluginName + POSTFIX_CONFIG);
+		File configFile = new File(new File(this.baseDir, "conf").getPath(), getPrefix() + this.configName + POSTFIX_CONFIG);
 		return configFile;
 	}
 
-	public String getPluginName() {
-		return pluginName;
+	public String getConfigName() {
+		return configName;
 	}
 
-	public void setPluginName(String pluginName) {
-		this.pluginName = pluginName;
+	public void setConfigName(String configName) {
+		this.configName =configName;
 	}
 }
