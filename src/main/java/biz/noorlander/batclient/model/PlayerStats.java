@@ -3,16 +3,16 @@ package biz.noorlander.batclient.model;
 import java.util.Objects;
 
 public class PlayerStats extends CustomConfig {
-    String name;
-    int strength = 0;
-    int dexterity = 0;
-    int constitution = 0;
-    int intelligence = 0;
-    int wisdom = 0;
-    int charisma = 0;
-    int size = 0;
-    String alignment = "neutral";
-    String age = "very young";
+    private String name;
+    private int strength = 0;
+    private int dexterity = 0;
+    private int constitution = 0;
+    private int intelligence = 0;
+    private int wisdom = 0;
+    private int charisma = 0;
+    private int size = 0;
+    private String alignment = "neutral";
+    private String age = "very young";
 
     public PlayerStats(Name configName, String baseDir) {
         super(configName, baseDir);

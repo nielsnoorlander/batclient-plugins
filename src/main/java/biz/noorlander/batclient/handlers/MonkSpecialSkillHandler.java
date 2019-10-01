@@ -37,10 +37,6 @@ public class MonkSpecialSkillHandler extends AbstractHandler implements EventLis
 
 	public MonkSpecialSkillHandler(ClientGUI gui) {
 		super(gui, "MONKSKILL");
-	}
-
-	@Override
-	public void initHandler() {
 		loadMonkSpecialSkills();
 		// Pattern to match: | Avalanche slam | 76 | Baptize | 90 |
 		StringBuilder commandPatternBuilder = new StringBuilder();

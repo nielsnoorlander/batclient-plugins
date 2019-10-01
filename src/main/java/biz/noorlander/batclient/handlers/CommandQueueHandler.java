@@ -22,10 +22,6 @@ public class CommandQueueHandler extends AbstractHandler implements EventListene
 
     public CommandQueueHandler(ClientGUI gui) {
         super(gui, "QUEUE");
-    }
-
-    @Override
-    public void initHandler() {
         commandQueue = new LinkedList<>();
         EventServiceManager.getInstance().getActionEventService().subscribe(this);
     }
@@ -37,12 +33,10 @@ public class CommandQueueHandler extends AbstractHandler implements EventListene
                 executionAction = true;
                 break;
             case DONE:
-                executionAction = false;
-                nextAction();
-                break;
             case INTERRUPTED:
                 executionAction = false;
                 nextAction();
+                break;
         }
     }
 

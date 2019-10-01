@@ -110,10 +110,6 @@ public class PlayerStatsHandler extends AbstractHandler implements ActionListene
 	}
 
 	@Override
-	public void initHandler() {
-	}
-
-	@Override
 	public void destroyHandler() {
 	}
 }

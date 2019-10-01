@@ -12,10 +12,8 @@ public abstract class AbstractHandler {
     AbstractHandler(ClientGUI gui, String pluginLabel) {
         this.gui = gui;
         this.pluginLabel = pluginLabel;
-        initHandler();
     }
 
-    public abstract void initHandler();
     public abstract void destroyHandler();
 
     void reportToGui(ParsedResult message) {

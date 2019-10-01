@@ -20,10 +20,6 @@ public class CombatRoundHandler extends AbstractHandler implements EventListener
 
 	public CombatRoundHandler(ClientGUI gui) {
         super(gui, "COMBAT");
-    }
-
-    @Override
-    public void initHandler() {
         EventServiceManager.getInstance().getCombatEventService().subscribe(this);
         this.timer = new Timer(false);
     }

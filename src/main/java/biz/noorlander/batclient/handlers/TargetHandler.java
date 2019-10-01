@@ -49,10 +49,6 @@ public class TargetHandler extends AbstractHandler {
 	}
 
 	@Override
-	public void initHandler() {
-	}
-
-	@Override
 	public void destroyHandler() {
 	}
 }
