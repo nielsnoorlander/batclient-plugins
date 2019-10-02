@@ -36,7 +36,7 @@ public class TargetHandler extends AbstractHandler {
 		this.selectedTarget = selectedTarget;
 	}
 
-	public void isInferion(boolean inferior) {
+	public void isInferior(boolean inferior) {
 		this.inferior = inferior;
 	}
 	

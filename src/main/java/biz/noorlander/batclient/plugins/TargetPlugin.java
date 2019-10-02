@@ -37,7 +37,7 @@ public class TargetPlugin extends BatClientPlugin implements BatClientPluginTrig
         if (text.startsWith("consider ") || (text.startsWith("You take a close look at ") && text.endsWith("in comparison to yourself."))) {
         	return ParsedResultUtil.gag(output);
         } else if (text.equals("It is an inferior opponent.")) {
-        	targetHandler.isInferion(true);
+        	targetHandler.isInferior(true);
         } else if (text.startsWith("target ")) {
         	Matcher tcMatcher = targetCommandPattern.matcher(text);
         	if (tcMatcher.find()) {

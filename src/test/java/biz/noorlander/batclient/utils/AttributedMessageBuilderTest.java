@@ -17,14 +17,14 @@ class AttributedMessageBuilderTest {
     @Test
     void testTextOnly() {
         ParsedResult result = AttributedMessageBuilder.create().append("test").build();
-        assertEquals("test", result.getStrippedText());
+        assertEquals("test" + System.lineSeparator(), result.getStrippedText());
         assertTrue(result.getAttributes().isEmpty());
     }
 
     @Test
     void testSingleAttributeOnly() {
         ParsedResult result = AttributedMessageBuilder.create().append("test", Optional.of(Color.GREEN), Optional.empty()).build();
-        assertEquals("test", result.getStrippedText());
+        assertEquals("test" + System.lineSeparator(), result.getStrippedText());
         assertEquals(1, result.getAttributes().size());
         ParsedAttribute parsedAttribute = result.getAttributes().get(0);
         assertEquals(0, parsedAttribute.getStart());
@@ -36,7 +36,7 @@ class AttributedMessageBuilderTest {
     @Test
     void testTextPlusSingleAttributedText() {
         ParsedResult result = AttributedMessageBuilder.create().append("bla ").append("test", Optional.empty(), Optional.of(Color.RED)).build();
-        assertEquals("bla test", result.getStrippedText());
+        assertEquals("bla test" + System.lineSeparator(), result.getStrippedText());
         assertEquals(1, result.getAttributes().size());
         ParsedAttribute parsedAttribute = result.getAttributes().get(0);
         assertEquals(4, parsedAttribute.getStart());
@@ -52,7 +52,7 @@ class AttributedMessageBuilderTest {
                 .append("test", Optional.of(Color.GREEN), Optional.of(Color.RED))
                 .append(" foo!")
                 .build();
-        assertEquals("bla test foo!", result.getStrippedText());
+        assertEquals("bla test foo!" + System.lineSeparator(), result.getStrippedText());
         assertEquals(2, result.getAttributes().size());
         ParsedAttribute parsedAttribute = result.getAttributes().get(0);
         assertEquals(4, parsedAttribute.getStart());
@@ -74,7 +74,7 @@ class AttributedMessageBuilderTest {
                 .append(" foo ")
                 .append("test2", Optional.empty(), Optional.of(Color.BLUE))
                 .build();
-        assertEquals("bla test foo test2", result.getStrippedText());
+        assertEquals("bla test foo test2" + System.lineSeparator(), result.getStrippedText());
         assertEquals(3, result.getAttributes().size());
         ParsedAttribute parsedAttribute = result.getAttributes().get(0);
         assertEquals(4, parsedAttribute.getStart());
