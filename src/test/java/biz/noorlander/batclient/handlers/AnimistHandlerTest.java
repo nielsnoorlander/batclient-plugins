@@ -1,18 +1,28 @@
 package biz.noorlander.batclient.handlers;
 
 import biz.noorlander.batclient.model.AnimalSoul;
+import biz.noorlander.batclient.model.WindowsConfig;
 import com.mythicscape.batclient.interfaces.ClientGUI;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.regex.Matcher;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class AnimistHandlerTest {
     @Mock
     ClientGUI fakeGUI;
 
+    @BeforeEach
+    void setup() {
+        when(fakeGUI.getBaseDirectory()).thenReturn("fakedir");
+    }
     @Test
     void getSelectSoulMatcher() {
         AnimistHandler underTest = new AnimistHandler(fakeGUI);

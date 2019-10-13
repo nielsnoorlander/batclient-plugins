@@ -2,11 +2,9 @@ package biz.noorlander.batclient.handlers;
 
 import biz.noorlander.batclient.model.CustomConfig;
 import biz.noorlander.batclient.model.PlayerStats;
-import biz.noorlander.batclient.model.WindowsConfig;
 import biz.noorlander.batclient.ui.PlayerStatsFrame;
 import biz.noorlander.batclient.utils.ConfigService;
 import biz.noorlander.batclient.utils.ParsedResultUtil;
-import com.mythicscape.batclient.interfaces.BatWindow;
 import com.mythicscape.batclient.interfaces.ClientGUI;
 import com.mythicscape.batclient.interfaces.ParsedResult;
 
@@ -15,22 +13,16 @@ import java.awt.event.ActionListener;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class PlayerStatsHandler extends AbstractHandler implements ActionListener {
+public class PlayerStatsHandler extends AbstractWindowedHandler implements ActionListener {
 
 	private PlayerStats currentScore;
 	private PlayerStatsFrame playerStatsFrame;
-	private BatWindow clientWin;
-	private WindowsConfig windowsConfig;
 	private Pattern shortScoreStats;
 
-	public PlayerStatsHandler(ClientGUI gui, WindowsConfig windowsConfig) {
+	public PlayerStatsHandler(ClientGUI gui) {
 		super(gui, "PLAYER_STATUS");
-		this.windowsConfig = windowsConfig;
         playerStatsFrame = new PlayerStatsFrame(this);
-        clientWin = this.createWindow( "PlayerStatus", windowsConfig);
-        clientWin.removeTabAt( 0 );
-        clientWin.newTab( "Status", playerStatsFrame.getPanel() );
-        clientWin.setVisible( true );
+        createWindow("playerStats", "Stats", playerStatsFrame.getPanel(), "PlayerStatsPlugin");
         shortScoreStats = Pattern.compile("^EQ:[a-z0-9]+ STATS: ([A-Z][a-z]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([a-z ]+)/([0-9]+)/([a-z ]+)/([0-9]+)/([ A-z',]*)/([_a-z]*)/");
         currentScore = loadBasePlayerStats();
         this.playerStatsFrame.setBaseStats(loadBasePlayerStats());
@@ -76,7 +68,7 @@ public class PlayerStatsHandler extends AbstractHandler implements ActionListene
 	}
 
 	private void saveStatsAsDefaults() {
-		ConfigService.getInstance().saveCustomConfig(this.currentScore);
+		ConfigService.getInstance().saveConfig(this.currentScore);
 	}
 
 	public ParsedResult updatePlayerStats(ParsedResult output) {
@@ -100,16 +92,8 @@ public class PlayerStatsHandler extends AbstractHandler implements ActionListene
 		playerStatsFrame.setEqSet(playerStatsFrame.convertToEqSet(eqSet));
 	}
 
-	public WindowsConfig getUpdatedWindowsConfig() {
-		windowsConfig.setLeft(clientWin.getLocation().x);
-		windowsConfig.setTop(clientWin.getLocation().y);
-		windowsConfig.setWidth(clientWin.getSize().width);
-		windowsConfig.setHeight(clientWin.getSize().height);
-		windowsConfig.setVisible(clientWin.isVisible());
-		return windowsConfig;
-	}
-
 	@Override
 	public void destroyHandler() {
+		saveWindowsConfig();
 	}
 }

@@ -6,24 +6,15 @@ import com.mythicscape.batclient.interfaces.BatWindow;
 public class WindowsConfig extends AbstractConfig {
 	private static final String PREFIX_WINDOWS = "window-";
 
-	public <T extends BatClientPlugin> WindowsConfig(T plugin) {
-		super(plugin.getName(), plugin.getBaseDirectory());
+	public WindowsConfig(String name, String baseDirectory) {
+		super(name, baseDirectory);
 	}
 
-	public <T extends BatClientPlugin> WindowsConfig(T plugin, BatWindow clientWin) {
-		super(plugin.getName(), plugin.getBaseDirectory());
-		this.left = clientWin.getLocation().x;
-		this.top = clientWin.getLocation().y;
-		this.width = clientWin.getSize().width;
-		this.height = clientWin.getSize().height;
-		this.visible = clientWin.isVisible();
-	}
-
-	int top = 0;
-	int left = 0;
-	int width = 200;
-	int height = 50;
-	boolean visible = true;
+	private int top = 0;
+	private int left = 0;
+	private int width = 200;
+	private int height = 150;
+	private boolean visible = true;
 	public int getTop() {
 		return top;
 	}

@@ -1,10 +1,20 @@
 package biz.noorlander.batclient.handlers;
 
 import biz.noorlander.batclient.model.AnimalSoul;
+import biz.noorlander.batclient.model.WindowsConfig;
+import biz.noorlander.batclient.ui.SoulPanelController;
 import biz.noorlander.batclient.utils.AttributedMessageBuilder;
+import biz.noorlander.batclient.utils.ConfigService;
+import com.mythicscape.batclient.interfaces.BatWindow;
 import com.mythicscape.batclient.interfaces.ClientGUI;
+import javafx.application.Platform;
+import javafx.embed.swing.JFXPanel;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 
 import java.awt.*;
+import java.io.IOException;
 import java.util.*;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -12,7 +22,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class AnimistHandler extends AbstractHandler {
+public class AnimistHandler extends AbstractWindowedHandler {
     public enum Quality { POOR, WEAK, AVERAGE, EXCELLENT, AWESOME }
     private static final Map<Quality,Color> QUALITY_COLOR_MAP = new HashMap<>();
     private List<AnimalSoul> soulDefinitions;
@@ -22,10 +32,13 @@ public class AnimistHandler extends AbstractHandler {
     private Pattern soulListHeaderPattern;
     private Pattern selectCommandPattern;
     private Pattern soulScorePattern;
+    private Pattern soulReputationPattern;
 
     private Map<String, Integer> soulStatistics;
     private Set<Soul> mySouls;
     private int soulHealthPercent = 100;
+
+    private SoulPanelController soulPanelController;
 
     private static class Soul {
         String race;
@@ -61,6 +74,32 @@ public class AnimistHandler extends AbstractHandler {
 		buildSoulPatterns();
 		resetSoulsAndStatistics();
 	}
+
+	public void initSoulPanel() {
+        this.soulPanelController = new SoulPanelController();
+        final JFXPanel fxPanel = new JFXPanel();
+        createWindow("SoulStatus", "Soul", fxPanel, "SoulPanel");
+        Platform.runLater(new Runnable() {
+            @Override
+            public void run() {
+                initFX(fxPanel);
+            }
+        });
+
+    }
+
+    private void initFX(JFXPanel fxPanel) {
+        FXMLLoader.setDefaultClassLoader(this.getClass().getClassLoader());
+        try {
+            FXMLLoader myLoader = new FXMLLoader(SoulPanelController.class.getResource("soulPanel.fxml"));
+            Parent root = myLoader.load();
+            Scene scene = new Scene(root, 200, 150);
+            fxPanel.setScene(scene);
+            this.soulPanelController = myLoader.getController();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     private void buildSoulPatterns() {
 	    StringBuilder animalSoulPattern = new StringBuilder("(");
@@ -122,6 +161,7 @@ public class AnimistHandler extends AbstractHandler {
 
     public void setSoulHealthPercent(int soulHealthPercent) {
         this.soulHealthPercent = soulHealthPercent;
+        this.soulPanelController.setSoulHealth(soulHealthPercent);
     }
 
     private void loadAnimalSouls() {
@@ -159,7 +199,8 @@ public class AnimistHandler extends AbstractHandler {
 
 	@Override
 	public void destroyHandler() {
-	}
+        saveWindowsConfig();
+    }
 
     public void registerSoulStatistic(String race, String quality, int id) {
         if ( ! soulStatistics.containsKey(race)) {
@@ -168,6 +209,10 @@ public class AnimistHandler extends AbstractHandler {
             soulStatistics.put(race, 1 + soulStatistics.get(race));
         }
         this.mySouls.add(new Soul(id, race, quality));
+    }
+
+    public void updateSoulReputation(int soulPoints, String soulMountLevel, String soulMountProgress) {
+        soulPanelController.setSoulPoints(soulPoints);
     }
 
     public void reportSoulStatistics(int current, int max) {

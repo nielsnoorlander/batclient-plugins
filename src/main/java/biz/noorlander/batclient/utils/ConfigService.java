@@ -7,6 +7,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
 
+import biz.noorlander.batclient.model.AbstractConfig;
 import biz.noorlander.batclient.model.CustomConfig;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -32,12 +33,17 @@ public class ConfigService {
 	public static ConfigService getInstance() {
 		return ConfigServiceHelper.INSTANCE;
 	}
-	public <T extends BatClientPlugin> WindowsConfig getWindowsConfig(T plugin) {
-		WindowsConfig config = new WindowsConfig(plugin);
-		System.out.println("Try to read windows config from: " + config.getConfigFile().getPath());
+	public WindowsConfig loadWindowsConfig(String name, String baseDirectory) {
+		System.out.println("Loading windows config '" + name + "' from " + baseDirectory);
+		WindowsConfig config = new WindowsConfig(name, baseDirectory);
+		System.out.println("Try to read windows config from: " + config.getConfigFile().getAbsolutePath());
 		if (config.getConfigFile().exists()) {
 			try {
-				return gson.fromJson(new FileReader(config.getConfigFile()), WindowsConfig.class);
+				WindowsConfig windowsConfig = gson.fromJson(new FileReader(config.getConfigFile()), WindowsConfig.class);
+				windowsConfig.setBaseDirectory(baseDirectory);
+				windowsConfig.setConfigName(name);
+				System.out.println("Set windows config baseDir to " + windowsConfig.getConfigFile().getParent());
+				return windowsConfig;
 			} catch (JsonSyntaxException | JsonIOException | FileNotFoundException e) {
 				System.err.println("Unable to read windows config from: " + config.getConfigFile().getPath());
 				e.printStackTrace();
@@ -50,7 +56,11 @@ public class ConfigService {
 
 	public <T extends CustomConfig> T loadCustomConfig(T config) {
 		try {
-			return gson.fromJson(new FileReader(config.getConfigFile()), (Type) config.getClass());
+			T t = gson.fromJson(new FileReader(config.getConfigFile()), (Type) config.getClass());
+			t.setConfigName(config.getConfigName());
+			t.setBaseDirectory(config.getConfigFile().getParent());
+			System.out.println("Set custom config baseDir to " + config.getConfigFile().getParent());
+			return t;
 		} catch (FileNotFoundException e) {
 			System.err.println("Unable to read custom config from: " + config.getConfigFile().getPath());
 			e.printStackTrace();
@@ -58,8 +68,10 @@ public class ConfigService {
 		}
 	}
 
-	public <T extends CustomConfig> void saveCustomConfig(T config) {
+	public <T extends AbstractConfig> void saveConfig(T config) {
 		File configFile = config.getConfigFile();
+		System.out.println("Saving config '" + config.getConfigName() + "' at " + config.getConfigFile().getPath());
+
 		FileWriter fileWriter = null;
 		try {
 			if (configFile.createNewFile()) {
@@ -82,31 +94,4 @@ public class ConfigService {
 			}
 		}
 	}
-
-	public <T extends BatClientPlugin> void saveWindowsConfig(T plugin, WindowsConfig windowsConfig) {
-		File configFile = new WindowsConfig(plugin).getConfigFile();
-		FileWriter fileWriter = null;
-		try {
-			if (configFile.createNewFile()) {
-				System.out.println("Created new configFile: " + configFile.getPath());
-			}
-			fileWriter = new FileWriter(configFile);
-			gson.toJson(windowsConfig, fileWriter);
-		} catch (IOException e) {
-			System.err.println("Unable to create configFile: " + e.getMessage());
-			e.printStackTrace();
-		} finally {
-			if (fileWriter != null) {
-				try {
-					fileWriter.flush();
-					fileWriter.close();
-				} catch (IOException e) {
-					System.err.println("Unable to flush/close configFile: " + e.getMessage());
-					e.printStackTrace();
-				}
-			}
-		}
-		
-	}
-
 }

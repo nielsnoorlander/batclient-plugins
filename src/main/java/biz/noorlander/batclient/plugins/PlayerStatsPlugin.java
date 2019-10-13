@@ -1,16 +1,11 @@
 package biz.noorlander.batclient.plugins;
 
 import biz.noorlander.batclient.handlers.PlayerStatsHandler;
-import biz.noorlander.batclient.model.WindowsConfig;
-import biz.noorlander.batclient.timers.TickerTimerTask;
-import biz.noorlander.batclient.ui.BatGauge;
-import biz.noorlander.batclient.utils.ConfigService;
-import biz.noorlander.batclient.utils.ParsedResultUtil;
-import com.mythicscape.batclient.interfaces.*;
+import com.mythicscape.batclient.interfaces.BatClientPlugin;
+import com.mythicscape.batclient.interfaces.BatClientPluginTrigger;
+import com.mythicscape.batclient.interfaces.BatClientPluginUtil;
+import com.mythicscape.batclient.interfaces.ParsedResult;
 
-import java.awt.*;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,8 +15,7 @@ public class PlayerStatsPlugin extends BatClientPlugin implements BatClientPlugi
 
     public void loadPlugin() {
         shortScorePattern = Pattern.compile("^EQ:([a-z0-9]+) STATS: ([A-Z][a-z]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([a-z ]+)/([0-9]+)/([a-z ]+)/([0-9]+)/([ A-z',]*)/([_a-z]*)/");
-        WindowsConfig playerStatsConfig = ConfigService.getInstance().getWindowsConfig(this);
-        playerStatsHandler = new PlayerStatsHandler(this.getClientGUI(), playerStatsConfig);
+        playerStatsHandler = new PlayerStatsHandler(this.getClientGUI());
     }
 
     public String getName() {
@@ -48,6 +42,6 @@ public class PlayerStatsPlugin extends BatClientPlugin implements BatClientPlugi
 
     public void clientExit() {
         System.out.println("--- Exit PlayerStatus ---\n");
-        ConfigService.getInstance().saveWindowsConfig(this, playerStatsHandler.getUpdatedWindowsConfig());
+        playerStatsHandler.destroyHandler();
     }
 }

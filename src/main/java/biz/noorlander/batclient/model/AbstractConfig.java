@@ -12,14 +12,13 @@ public abstract class AbstractConfig {
 	
 	public AbstractConfig(String configName, String baseDir) {
 		this.configName = configName;
-		this.baseDir =baseDir;
+		this.baseDir = baseDir;
 	}
 	
 	public abstract String getPrefix();
 	
 	public File getConfigFile() {
-		File configFile = new File(new File(this.baseDir, "conf").getPath(), getPrefix() + this.configName + POSTFIX_CONFIG);
-		return configFile;
+		return new File(new File(this.baseDir, "conf").getPath(), getPrefix() + this.configName + POSTFIX_CONFIG);
 	}
 
 	public String getConfigName() {
@@ -27,6 +26,10 @@ public abstract class AbstractConfig {
 	}
 
 	public void setConfigName(String configName) {
-		this.configName =configName;
+		this.configName = configName;
+	}
+
+	public void setBaseDirectory(String baseDirectory) {
+		this.baseDir = baseDirectory;
 	}
 }

@@ -17,6 +17,7 @@ public class AnimistPlugin extends BatClientPlugin implements BatClientPluginTri
 	@Override
 	public void loadPlugin() {
 		animistHandler = new AnimistHandler(this.getClientGUI());
+		animistHandler.initSoulPanel();
 	}
 
 	@Override
