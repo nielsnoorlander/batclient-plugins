@@ -38,7 +38,7 @@ public class SoulPanelController {
 
     public void setSoulHealth(int newSoulPoints) {
         Platform.runLater(() -> {
-            hpBar.setProgress(100.0 / newSoulPoints);
+            hpBar.setProgress(newSoulPoints / 100.0);
             hpValue.setText(newSoulPoints + "%");
         });
     }
