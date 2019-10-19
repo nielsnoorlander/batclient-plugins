@@ -1,28 +1,23 @@
 package biz.noorlander.batclient.handlers;
 
 import biz.noorlander.batclient.model.AnimalSoul;
-import biz.noorlander.batclient.model.WindowsConfig;
-import biz.noorlander.batclient.ui.SoulPanelController;
+import biz.noorlander.batclient.ui.AnimistSoulFrame;
+import biz.noorlander.batclient.ui.BatGauge;
 import biz.noorlander.batclient.utils.AttributedMessageBuilder;
-import biz.noorlander.batclient.utils.ConfigService;
-import com.mythicscape.batclient.interfaces.BatWindow;
 import com.mythicscape.batclient.interfaces.ClientGUI;
-import javafx.application.Platform;
-import javafx.embed.swing.JFXPanel;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 
+import javax.swing.*;
 import java.awt.*;
-import java.io.IOException;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class AnimistHandler extends AbstractWindowedHandler {
+
+    private BatGauge animistHpBar;
 
     public enum Quality { POOR, WEAK, AVERAGE, EXCELLENT, AWESOME }
     private static final Map<Quality,Color> QUALITY_COLOR_MAP = new HashMap<>();
@@ -40,7 +35,7 @@ public class AnimistHandler extends AbstractWindowedHandler {
     private Set<Soul> mySouls;
     private int soulHealthPercent = 100;
 
-    private SoulPanelController soulPanelController;
+    private AnimistSoulFrame animistSoulFrame;
 
     private static class Soul {
         String race;
@@ -78,29 +73,20 @@ public class AnimistHandler extends AbstractWindowedHandler {
 	}
 
 	public void initSoulPanel() {
-        this.soulPanelController = new SoulPanelController();
-        final JFXPanel fxPanel = new JFXPanel();
-        createWindow("SoulStatus", "Soul", fxPanel, "SoulPanel");
-        Platform.runLater(new Runnable() {
-            @Override
-            public void run() {
-                initFX(fxPanel);
-            }
-        });
-
-    }
-
-    private void initFX(JFXPanel fxPanel) {
-        FXMLLoader.setDefaultClassLoader(this.getClass().getClassLoader());
-        try {
-            FXMLLoader myLoader = new FXMLLoader(SoulPanelController.class.getResource("soulPanel.fxml"));
-            Parent root = myLoader.load();
-            Scene scene = new Scene(root, 200, 150);
-            fxPanel.setScene(scene);
-            this.soulPanelController = myLoader.getController();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        animistSoulFrame = new AnimistSoulFrame();
+        animistHpBar = new BatGauge(new Dimension(240, 50), 100, "%", BatGauge.RED);
+        animistHpBar.addBoundary(40, BatGauge.ORANGE);
+        animistHpBar.addBoundary(60, BatGauge.GREEN);
+        JPanel soulPanel = new JPanel(new GridBagLayout());
+        soulPanel.setBackground(new Color(-14540254));
+        GridBagConstraints c = new GridBagConstraints();
+        c.gridx = 0;
+        c.gridy = 0;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        soulPanel.add(animistHpBar, c);
+        c.gridy = 1;
+        soulPanel.add(animistSoulFrame.getAnimistSoulPanel(), c);
+        createWindow("SoulStatus", "Soul", soulPanel, "SoulPanel");
     }
 
     private void buildSoulPatterns() {
@@ -178,7 +164,7 @@ public class AnimistHandler extends AbstractWindowedHandler {
 
     public void setSoulHealthPercent(int soulHealthPercent) {
         this.soulHealthPercent = soulHealthPercent;
-        this.soulPanelController.setSoulHealth(soulHealthPercent);
+        this.animistHpBar.setValue(soulHealthPercent);
     }
 
     private void loadAnimalSouls() {
@@ -228,13 +214,13 @@ public class AnimistHandler extends AbstractWindowedHandler {
         this.mySouls.add(new Soul(id, race, quality));
     }
 
-    public void setSoulReputation(int soulPoints) {
-        soulPanelController.setSoulPoints(soulPoints);
+    public void setSoulPointsAvailable(int soulPoints) {
+        animistSoulFrame.setPointsAvailable(soulPoints);
     }
 
     public void setMountReputation(String soulMountLevel, String soulMountProgress) {
-        soulPanelController.setMountLevel(soulMountLevel);
-        soulPanelController.setMountProgress(soulMountProgress);
+        animistSoulFrame.setMountLevel(soulMountLevel);
+        animistSoulFrame.setMountProgress(soulMountProgress);
     }
 
     public void reportSoulStatistics(int current, int max) {

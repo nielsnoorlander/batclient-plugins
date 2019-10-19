@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="biz.noorlander.batclient.ui.AnimistSoulFrame">
+  <grid id="27dc6" binding="animistSoulPanel" layout-manager="GridBagLayout">
+    <constraints>
+      <xy x="20" y="20" width="256" height="235"/>
+    </constraints>
+    <properties>
+      <background color="-14540254"/>
+      <foreground color="-12171706"/>
+      <preferredSize width="240" height="48"/>
+    </properties>
+    <border type="none"/>
+    <children>
+      <component id="feeb3" class="javax.swing.JLabel">
+        <constraints>
+          <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+          <gridbag weightx="0.0" weighty="1.0"/>
+        </constraints>
+        <properties>
+          <text value="Points available"/>
+        </properties>
+      </component>
+      <component id="170c" class="javax.swing.JLabel" binding="pointsAvailable">
+        <constraints>
+          <grid row="0" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false"/>
+          <gridbag weightx="0.0" weighty="1.0"/>
+        </constraints>
+        <properties>
+          <foreground color="-10578245"/>
+          <horizontalAlignment value="10"/>
+          <text value="1234"/>
+        </properties>
+      </component>
+      <component id="dcef8" class="javax.swing.JLabel">
+        <constraints>
+          <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+          <gridbag weightx="0.0" weighty="1.0"/>
+        </constraints>
+        <properties>
+          <text value="Mount level"/>
+        </properties>
+      </component>
+      <component id="c6598" class="javax.swing.JLabel" binding="mountLevel">
+        <constraints>
+          <grid row="1" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false"/>
+          <gridbag weightx="0.0" weighty="1.0"/>
+        </constraints>
+        <properties>
+          <foreground color="-10578245"/>
+          <text value="Chicken"/>
+        </properties>
+      </component>
+      <component id="43036" class="javax.swing.JLabel">
+        <constraints>
+          <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+          <gridbag weightx="0.0" weighty="1.0"/>
+        </constraints>
+        <properties>
+          <text value="Mount progress"/>
+        </properties>
+      </component>
+      <component id="33b38" class="javax.swing.JLabel" binding="mountProgress">
+        <constraints>
+          <grid row="2" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false"/>
+          <gridbag weightx="0.0" weighty="1.0"/>
+        </constraints>
+        <properties>
+          <foreground color="-10578245"/>
+          <text value="0%"/>
+        </properties>
+      </component>
+    </children>
+  </grid>
+</form>

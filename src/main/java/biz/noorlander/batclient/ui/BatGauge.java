@@ -9,8 +9,11 @@ import java.util.TreeMap;
 public class BatGauge extends JPanel {
 
 	private static final long serialVersionUID = 3148254377785539483L;
+    public final static Color GREEN = new Color(0, 153, 0);
+    public final static Color RED = new Color(153, 32, 24);
+    public final static Color ORANGE = new Color(163, 89, 27);
 
-	private JProgressBar progressBar;
+    private JProgressBar progressBar;
     private String unit;
     private SortedMap<Integer, Color> boundaryMap;
     private Color defaultColor;

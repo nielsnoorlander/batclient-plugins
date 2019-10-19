@@ -40,7 +40,7 @@ public class AnimistPlugin extends BatClientPlugin implements BatClientPluginTri
 		} else {
 			Matcher soulReputation = animistHandler.getSoulReputationMatcher(text);
 			if (soulReputation.find()) {
-				animistHandler.setSoulReputation(Integer.parseInt(soulReputation.group(1)));
+				animistHandler.setSoulPointsAvailable(Integer.parseInt(soulReputation.group(3)));
 				return ParsedResultUtil.gag(output);
 			} else {
 				Matcher mountReputation = animistHandler.getMountReputationMatcher(text);
