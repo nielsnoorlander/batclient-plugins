@@ -23,12 +23,33 @@ public class AnimistPlugin extends BatClientPlugin implements BatClientPluginTri
 	@Override
 	public ParsedResult trigger(ParsedResult output) {
         String text = output.getStrippedText().trim();
+        if (text.startsWith("Your soul starts to follow you, as you ordered.")
+			|| text.equals("You feel slightly better at fighting with your soul companion.")
+			|| text.equals("You feel slightly better at fighting with a soul mount.")
+			|| text.equals("The radiance bolts back, striking you. You smile proudly - you and your soul are one again.")
+        	|| text.startsWith("You chant, sing and dance, slapping yourself at the important parts.")
+			)
+        {
+        	animistHandler.updateReputation();
+			return ParsedResultUtil.gag(output);
+		}
         Matcher soulScore = animistHandler.getSoulScoreMatcher(text);
         if (soulScore.find()) {
         	animistHandler.setSoulHealthPercent(Integer.parseInt(soulScore.group(1)));
         	return ParsedResultUtil.gag(output);
+		} else {
+			Matcher soulReputation = animistHandler.getSoulReputationMatcher(text);
+			if (soulReputation.find()) {
+				animistHandler.setSoulReputation(Integer.parseInt(soulReputation.group(1)));
+				return ParsedResultUtil.gag(output);
+			} else {
+				Matcher mountReputation = animistHandler.getMountReputationMatcher(text);
+				if (mountReputation.find()) {
+					animistHandler.setMountReputation(mountReputation.group(1), mountReputation.group(2));
+					return ParsedResultUtil.gag(output);
+				}
+			}
 		}
-
         Matcher soul = animistHandler.getSoulListMatcher(text);
         if (soul.find()) {
 			String race = soul.group(4);

@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class AnimistHandler extends AbstractWindowedHandler {
+
     public enum Quality { POOR, WEAK, AVERAGE, EXCELLENT, AWESOME }
     private static final Map<Quality,Color> QUALITY_COLOR_MAP = new HashMap<>();
     private List<AnimalSoul> soulDefinitions;
@@ -33,6 +34,7 @@ public class AnimistHandler extends AbstractWindowedHandler {
     private Pattern selectCommandPattern;
     private Pattern soulScorePattern;
     private Pattern soulReputationPattern;
+    private Pattern mountReputationPattern;
 
     private Map<String, Integer> soulStatistics;
     private Set<Soul> mySouls;
@@ -113,6 +115,8 @@ public class AnimistHandler extends AbstractWindowedHandler {
         soulListHeaderPattern = Pattern.compile("^Id[ ]+Name[ ]+Power[ ]+Type$");
         selectCommandPattern = Pattern.compile("^as[ ]+(" + animals + ")[ ]+([A-z]+)[ ]*?"+quality+"?$");
         soulScorePattern = Pattern.compile("^Your soul companion: [a-z]+ [(]([0-9]+)[%][)] [+-]+$");
+        soulReputationPattern = Pattern.compile("^Your soul training points total is ([0-9]+). You have spent ([0-9]+) soul training points. You have ([0-9]+) unused points\\.$");
+        mountReputationPattern = Pattern.compile("^Your mount experience level is currently '([A-Z][a-z]+)'\\. You are ([0-9]+[%]) in to next level\\.$");
     }
 
     private void loadQualityColors() {
@@ -122,6 +126,11 @@ public class AnimistHandler extends AbstractWindowedHandler {
         QUALITY_COLOR_MAP.put(Quality.EXCELLENT, new Color(54, 169, 19));
         QUALITY_COLOR_MAP.put(Quality.AWESOME, new Color(20, 253, 0));
     }
+
+    public void updateReputation() {
+        command("animist rep");
+    }
+
     public void resetSoulsAndStatistics() {
         soulStatistics = new HashMap<>();
         mySouls = new HashSet<>();
@@ -149,6 +158,14 @@ public class AnimistHandler extends AbstractWindowedHandler {
 
     public Matcher getSoulScoreMatcher(String text) {
         return soulScorePattern.matcher(text);
+    }
+
+    public Matcher getSoulReputationMatcher(String text) {
+        return soulReputationPattern.matcher(text);
+    }
+
+    public Matcher getMountReputationMatcher(String text) {
+        return mountReputationPattern.matcher(text);
     }
 
     public AnimalSoul getAnimistSoul(String race) {
@@ -211,8 +228,13 @@ public class AnimistHandler extends AbstractWindowedHandler {
         this.mySouls.add(new Soul(id, race, quality));
     }
 
-    public void updateSoulReputation(int soulPoints, String soulMountLevel, String soulMountProgress) {
+    public void setSoulReputation(int soulPoints) {
         soulPanelController.setSoulPoints(soulPoints);
+    }
+
+    public void setMountReputation(String soulMountLevel, String soulMountProgress) {
+        soulPanelController.setMountLevel(soulMountLevel);
+        soulPanelController.setMountProgress(soulMountProgress);
     }
 
     public void reportSoulStatistics(int current, int max) {
