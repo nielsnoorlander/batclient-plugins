@@ -6,33 +6,42 @@ import com.mythicscape.batclient.interfaces.BatWindow;
 import com.mythicscape.batclient.interfaces.ClientGUI;
 
 import javax.swing.*;
+import java.util.HashMap;
+import java.util.Map;
 
 abstract class AbstractWindowedHandler extends AbstractHandler {
 
-    private BatWindow clientWin;
+    private Map<String, BatWindow> clientWindows;
     private String basePath;
-    private WindowsConfig windowsConfig;
+    private Map<String, WindowsConfig> windowsConfigs;
 
     AbstractWindowedHandler(ClientGUI gui, String pluginLabel) {
         super(gui, pluginLabel);
-        this.basePath = gui.getBaseDirectory();
+        basePath = gui.getBaseDirectory();
+        windowsConfigs = new HashMap<>();
+        clientWindows = new HashMap<>();
     }
 
-    public void createWindow(String handle, String tabName, JComponent panel, String configName) {
-        this.windowsConfig = ConfigService.getInstance().loadWindowsConfig(configName, basePath);
-        this.clientWin = this.createWindow( handle, windowsConfig);
-        this.clientWin.removeTabAt( 0 );
-        this.clientWin.newTab( tabName, panel );
-        this.clientWin.setVisible( true );
+    void createWindow(String handle, String tabName, JComponent panel, String configName) {
+        WindowsConfig windowsConfig = ConfigService.getInstance().loadWindowsConfig(configName, basePath);
+        BatWindow clientWin = this.createWindow( handle, windowsConfig);
+        clientWin.removeTabAt( 0 );
+        clientWin.newTab( tabName, panel );
+        clientWin.setVisible( true );
+        windowsConfigs.put(configName, windowsConfig);
+        clientWindows.put(configName, clientWin);
     }
 
-    public void saveWindowsConfig() {
-        this.windowsConfig.setLeft(clientWin.getLocation().x);
-        this.windowsConfig.setTop(clientWin.getLocation().y);
-        this.windowsConfig.setWidth(clientWin.getSize().width);
-        this.windowsConfig.setHeight(clientWin.getSize().height);
-        this.windowsConfig.setVisible(clientWin.isVisible());
-        ConfigService.getInstance().saveConfig(this.windowsConfig);
+    void saveWindowsConfig() {
+        windowsConfigs.forEach((configName, windowsConfig) -> {
+            BatWindow clientWin = clientWindows.get(configName);
+            windowsConfig.setLeft(clientWin.getLocation().x);
+            windowsConfig.setTop(clientWin.getLocation().y);
+            windowsConfig.setWidth(clientWin.getSize().width);
+            windowsConfig.setHeight(clientWin.getSize().height);
+            windowsConfig.setVisible(clientWin.isVisible());
+            ConfigService.getInstance().saveConfig(windowsConfig);
+        });
     }
 
 

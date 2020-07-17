@@ -6,7 +6,6 @@ import biz.noorlander.batclient.ui.BatGauge;
 import biz.noorlander.batclient.utils.AttributedMessageBuilder;
 import com.mythicscape.batclient.interfaces.ClientGUI;
 
-import javax.swing.*;
 import java.awt.*;
 import java.util.List;
 import java.util.*;
@@ -74,19 +73,12 @@ public class AnimistHandler extends AbstractWindowedHandler {
 
 	public void initSoulPanel() {
         animistSoulFrame = new AnimistSoulFrame();
-        animistHpBar = new BatGauge(new Dimension(240, 50), 100, "%", BatGauge.RED);
+        animistHpBar = new BatGauge(new Dimension(240, 50), 101, "%", BatGauge.RED);
         animistHpBar.addBoundary(40, BatGauge.ORANGE);
         animistHpBar.addBoundary(60, BatGauge.GREEN);
-        JPanel soulPanel = new JPanel(new GridBagLayout());
-        soulPanel.setBackground(new Color(-14540254));
-        GridBagConstraints c = new GridBagConstraints();
-        c.gridx = 0;
-        c.gridy = 0;
-        c.fill = GridBagConstraints.HORIZONTAL;
-        soulPanel.add(animistHpBar, c);
-        c.gridy = 1;
-        soulPanel.add(animistSoulFrame.getAnimistSoulPanel(), c);
-        createWindow("SoulStatus", "Soul", soulPanel, "SoulPanel");
+        animistHpBar.setValue(100);
+        createWindow("SoulHp", "Soul health", animistHpBar, "SoulHpBar");
+        createWindow("SoulHScore", "Soul score", animistSoulFrame.getAnimistSoulPanel(), "SoulScore");
     }
 
     private void buildSoulPatterns() {
