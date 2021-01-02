@@ -1,28 +1,24 @@
 package biz.noorlander.batclient.handlers;
 
-import java.awt.Color;
-import java.awt.font.TextAttribute;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.SortedMap;
-import java.util.TreeMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import biz.noorlander.batclient.utils.CommonPatterns;
-import com.mythicscape.batclient.interfaces.ClientGUI;
-import com.mythicscape.batclient.interfaces.ParsedResult;
-
 import biz.noorlander.batclient.model.Command;
 import biz.noorlander.batclient.model.MonkSpecialSkill;
 import biz.noorlander.batclient.services.EventListener;
 import biz.noorlander.batclient.services.events.CombatEvent;
 import biz.noorlander.batclient.services.managers.EventServiceManager;
+import biz.noorlander.batclient.utils.Attribute;
 import biz.noorlander.batclient.utils.AttributedMessageBuilder;
+import biz.noorlander.batclient.utils.CommonPatterns;
 import biz.noorlander.batclient.utils.ParsedResultUtil;
+import com.google.common.collect.Lists;
+import com.mythicscape.batclient.interfaces.ClientGUI;
+import com.mythicscape.batclient.interfaces.ParsedResult;
+
+import java.awt.*;
+import java.awt.font.TextAttribute;
+import java.util.List;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MonkSpecialSkillHandler extends AbstractHandler implements EventListener<CombatEvent> {
 	private Pattern showSkillsPattern;
@@ -107,8 +103,9 @@ public class MonkSpecialSkillHandler extends AbstractHandler implements EventLis
 		for (MonkSpecialSkill skill : this.combos.get(comboName)) {
 			Integer points = skillsTrained.get(skill.getName());
 			builder.append(String.format(" %3d", points),
-					points.equals(previousSkillsTrained.get(skill.getName())) ? Optional.empty() : Optional.of(Color.GREEN), 
-							Optional.empty()).append(" |");
+					points.equals(previousSkillsTrained.get(skill.getName())) ?
+							Lists.newArrayList() : Lists.newArrayList(Attribute.fgColor(Color.GREEN)))
+					.append(" |");
 		}
 //		builder.append("\n");
 		reportToGui(builder.build());
@@ -126,7 +123,7 @@ public class MonkSpecialSkillHandler extends AbstractHandler implements EventLis
 			return "@party report Monk combo selected: " + combo;
 		} else {
 			ParsedResult message = AttributedMessageBuilder.create()
-					.append("Unknown combo: ", Optional.of(Color.RED), Optional.empty()).append(combo)
+					.append("Unknown combo: ", Lists.newArrayList(Attribute.fgColor(Color.RED))).append(combo)
 					.append(". Available combos are:").build();
 			reportToGui(message);
 			this.combos.keySet()
@@ -148,13 +145,13 @@ public class MonkSpecialSkillHandler extends AbstractHandler implements EventLis
 				if (this.combos.get(comboSelected).get(comboProgress) == monkSkill) {
 					if (comboProgress == combos.get(comboSelected).size() - 1) {
 						reportToGui(AttributedMessageBuilder.create()
-								.append("COMBO: ", Optional.of(Color.CYAN), Optional.empty()).append(comboSelected)
+								.append("COMBO: ", Lists.newArrayList(Attribute.fgColor(Color.CYAN))).append(comboSelected)
 								.append(" - DONE").build());
 						comboProgress = 0;
 					} else {
 						comboProgress++;
 						reportToGui(AttributedMessageBuilder.create()
-								.append("COMBO: ", Optional.of(Color.CYAN), Optional.empty()).append(comboSelected)
+								.append("COMBO: ", Lists.newArrayList(Attribute.fgColor(Color.CYAN))).append(comboSelected)
 								.append(" - " + comboProgress).append(" / " + combos.get(comboSelected).size())
 								.build());
 					}
@@ -163,13 +160,13 @@ public class MonkSpecialSkillHandler extends AbstractHandler implements EventLis
 					if (this.combos.get(comboSelected).get(comboProgress) == monkSkill) {
 						comboProgress++;
 						reportToGui(AttributedMessageBuilder.create()
-								.append("COMBO: ", Optional.of(Color.CYAN), Optional.empty()).append(comboSelected)
+								.append("COMBO: ", Lists.newArrayList(Attribute.fgColor(Color.CYAN))).append(comboSelected)
 								.append(" - " + comboProgress).append(" / " + combos.get(comboSelected).size())
 								.build());
 					} else {
 						reportToGui(AttributedMessageBuilder.create()
-								.append("COMBO: ", Optional.of(Color.CYAN), Optional.empty()).append(comboSelected)
-								.append(" - ").append(" FAILED", Optional.of(Color.RED), Optional.empty()).build());
+								.append("COMBO: ", Lists.newArrayList(Attribute.fgColor(Color.CYAN))).append(comboSelected)
+								.append(" - ").append(" FAILED", Lists.newArrayList(Attribute.fgColor(Color.RED))).build());
 					}
 				}
 				return parsedResult;
@@ -439,8 +436,8 @@ public class MonkSpecialSkillHandler extends AbstractHandler implements EventLis
 		case FINISHED:
 			if (comboProgress > 0) {
 				reportToGui(AttributedMessageBuilder.create()
-						.append("COMBO: ", Optional.of(Color.CYAN), Optional.empty()).append(comboSelected)
-						.append(" - ").append(" ABORTED", Optional.of(Color.YELLOW), Optional.empty()).build());
+						.append("COMBO: ", Lists.newArrayList(Attribute.fgColor(Color.CYAN))).append(comboSelected)
+						.append(" - ").append(" ABORTED", Lists.newArrayList(Attribute.fgColor(Color.YELLOW))).build());
 				comboProgress = 0;
 			}
 			break;

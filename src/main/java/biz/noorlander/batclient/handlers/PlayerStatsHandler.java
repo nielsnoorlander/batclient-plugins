@@ -14,10 +14,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PlayerStatsHandler extends AbstractWindowedHandler implements ActionListener {
-
-	private PlayerStats currentScore;
-	private PlayerStatsFrame playerStatsFrame;
-	private Pattern shortScoreStats;
+	private final Pattern shortScorePattern;
+	private final PlayerStats currentScore;
+	private final PlayerStatsFrame playerStatsFrame;
+	private final Pattern shortScoreStats;
 
 	public PlayerStatsHandler(ClientGUI gui) {
 		super(gui, "PLAYER_STATUS");
@@ -26,6 +26,7 @@ public class PlayerStatsHandler extends AbstractWindowedHandler implements Actio
         shortScoreStats = Pattern.compile("^EQ:[a-z0-9]+ STATS: ([A-Z][a-z]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([a-z ]+)/([0-9]+)/([a-z ]+)/([0-9]+)/([ A-z',]*)/([_a-z]*)/");
         currentScore = loadBasePlayerStats();
         this.playerStatsFrame.setBaseStats(loadBasePlayerStats());
+		shortScorePattern = Pattern.compile("^EQ:([a-z0-9]+) STATS: ([A-Z][a-z]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([0-9]+)/([a-z ]+)/([0-9]+)/([a-z ]+)/([0-9]+)/([ A-z',]*)/([_a-z]*)/");
 	}
 
     private PlayerStats loadBasePlayerStats() {
@@ -95,5 +96,29 @@ public class PlayerStatsHandler extends AbstractWindowedHandler implements Actio
 	@Override
 	public void destroyHandler() {
 		saveWindowsConfig();
+	}
+
+	@Override
+	public ParsedResult handleOutputTriggers(ParsedResult parsedResult) {
+		String text = parsedResult.getStrippedText().trim();
+		Matcher matcher = shortScorePattern.matcher(text);
+		if (matcher.find()) {
+			if ("dam".equals(matcher.group(1))) {
+				updateEqSet("combat");
+			} else if ("spr".equals(matcher.group(1)) || "hpr".equals(matcher.group(1))) {
+				updateEqSet("regen");
+			} else if ("wis".equals(matcher.group(1)) || "dex".equals(matcher.group(1))) {
+				updateEqSet("buff");
+			} else if ("0".equals(matcher.group(1))) {
+				updateEqSet("none");
+			}
+			return updatePlayerStats(parsedResult);
+		}
+		return null;
+	}
+
+	@Override
+	public String handleCommandTriggers(String command) {
+		return null;
 	}
 }

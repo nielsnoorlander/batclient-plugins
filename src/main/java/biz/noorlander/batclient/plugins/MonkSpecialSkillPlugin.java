@@ -1,37 +1,13 @@
 package biz.noorlander.batclient.plugins;
 
+import biz.noorlander.batclient.BatmudPlugin;
 import biz.noorlander.batclient.handlers.MonkSpecialSkillHandler;
-import com.mythicscape.batclient.interfaces.*;
 
-public class MonkSpecialSkillPlugin extends BatClientPlugin
-		implements BatClientPluginCommandTrigger, BatClientPluginTrigger, BatClientPluginUtil {
-
-	private MonkSpecialSkillHandler monkSpecialSkillHandler;
+public class MonkSpecialSkillPlugin extends BatmudPlugin<MonkSpecialSkillHandler> {
 
 	@Override
-	public void clientExit() {
-        System.out.println("--- Unloading MonkSpecialSkillPlugin ---");
-
+	public MonkSpecialSkillHandler createHandler() {
+		return new MonkSpecialSkillHandler(this.getClientGUI());
 	}
 
-	@Override
-	public ParsedResult trigger(ParsedResult incoming) {
-		return monkSpecialSkillHandler.handleOutputTriggers(incoming);
-	}
-
-	@Override
-	public String trigger(String command) {
-		return monkSpecialSkillHandler.handleCommandTriggers(command);
-	}
-
-
-	@Override
-	public String getName() {
-		return "MonkSpecialSkillPlugin";
-	}
-
-	@Override
-	public void loadPlugin() {
-		this.monkSpecialSkillHandler = new MonkSpecialSkillHandler(this.getClientGUI());
-	}
 }

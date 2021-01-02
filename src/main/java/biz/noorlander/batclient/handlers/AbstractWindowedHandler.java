@@ -14,12 +14,25 @@ abstract class AbstractWindowedHandler extends AbstractHandler {
     private Map<String, BatWindow> clientWindows;
     private String basePath;
     private Map<String, WindowsConfig> windowsConfigs;
+    private static boolean fixedLookAndFeel = false;
 
     AbstractWindowedHandler(ClientGUI gui, String pluginLabel) {
         super(gui, pluginLabel);
         basePath = gui.getBaseDirectory();
         windowsConfigs = new HashMap<>();
         clientWindows = new HashMap<>();
+        fixLookAndFeel();
+    }
+
+    private void fixLookAndFeel() {
+        if (!fixedLookAndFeel) {
+            try {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                fixedLookAndFeel = true;
+            } catch (ClassNotFoundException | UnsupportedLookAndFeelException | InstantiationException | IllegalAccessException ex) {
+                ex.printStackTrace();
+            }
+        }
     }
 
     void createWindow(String handle, String tabName, JComponent panel, String configName) {
