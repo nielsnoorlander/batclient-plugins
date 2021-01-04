@@ -1,27 +1,32 @@
 package biz.noorlander.batclient.handlers;
 
-import java.awt.Color;
-import java.util.Optional;
-import java.util.Timer;
-
-import com.mythicscape.batclient.interfaces.ClientGUI;
-
 import biz.noorlander.batclient.services.EventListener;
 import biz.noorlander.batclient.services.events.CombatEvent;
 import biz.noorlander.batclient.services.events.CombatEvent.Type;
 import biz.noorlander.batclient.services.managers.EventServiceManager;
 import biz.noorlander.batclient.timers.CombatTimerTask;
+import biz.noorlander.batclient.utils.Attribute;
 import biz.noorlander.batclient.utils.AttributedMessageBuilder;
+import com.google.common.collect.Lists;
+import com.mythicscape.batclient.interfaces.ClientGUI;
+import com.mythicscape.batclient.interfaces.ParsedResult;
+
+import java.awt.*;
+import java.util.Timer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class CombatRoundHandler extends AbstractHandler implements EventListener<CombatEvent> {
 	private int fight = 0;
     private int round = 0;
-    private Timer timer;
+    private final Timer timer;
+	private final Pattern combatRoundPattern;
 
 	public CombatRoundHandler(ClientGUI gui) {
         super(gui, "COMBAT");
         EventServiceManager.getInstance().getCombatEventService().subscribe(this);
         this.timer = new Timer(false);
+		this.combatRoundPattern = Pattern.compile("^[*]+ Round ([0-9]+) ([(][0-9]+[)] )?[*]+$");
     }
 
     @Override
@@ -39,7 +44,7 @@ public class CombatRoundHandler extends AbstractHandler implements EventListener
             	}
             	break;
             case FINISHED:
-            	reportToGui(AttributedMessageBuilder.create().append("*** Combat DONE", Optional.of(Color.CYAN), Optional.empty()).build());
+            	reportToGui(AttributedMessageBuilder.create().append("*** Combat DONE", Lists.newArrayList(Attribute.fgColor(Color.CYAN))).build());
             	break;
         }
     }
@@ -70,6 +75,24 @@ public class CombatRoundHandler extends AbstractHandler implements EventListener
 	public void destroyHandler() {
 		this.timer.cancel();
 	}
-	
-	
+
+	@Override
+	public ParsedResult handleOutputTriggers(ParsedResult parsedResult) {
+		String text = parsedResult.getStrippedText().trim();
+		if (text.startsWith("*")) {
+			Matcher roundMatcher = combatRoundPattern.matcher(text);
+			if (roundMatcher.find()) {
+				combatRound(Integer.parseInt(roundMatcher.group(1)));
+				return parsedResult;
+			}
+		}
+		return null;
+	}
+
+	@Override
+	public String handleCommandTriggers(String command) {
+		return null;
+	}
+
+
 }

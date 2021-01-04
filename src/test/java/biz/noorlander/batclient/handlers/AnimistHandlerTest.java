@@ -1,7 +1,7 @@
 package biz.noorlander.batclient.handlers;
 
 import biz.noorlander.batclient.model.AnimalSoul;
-import biz.noorlander.batclient.model.WindowsConfig;
+import com.mythicscape.batclient.interfaces.BatWindow;
 import com.mythicscape.batclient.interfaces.ClientGUI;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,10 +18,13 @@ import static org.mockito.Mockito.*;
 class AnimistHandlerTest {
     @Mock
     ClientGUI fakeGUI;
+    @Mock
+    BatWindow fakeBatWindow;
 
     @BeforeEach
     void setup() {
         when(fakeGUI.getBaseDirectory()).thenReturn("fakedir");
+        when(fakeGUI.createBatWindow(any(), anyInt(), anyInt(), anyInt(), anyInt())).thenReturn(fakeBatWindow);
     }
     @Test
     void getSelectSoulMatcher() {

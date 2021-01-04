@@ -3,10 +3,15 @@ package biz.noorlander.batclient.handlers;
 import biz.noorlander.batclient.model.AnimalSoul;
 import biz.noorlander.batclient.ui.AnimistSoulFrame;
 import biz.noorlander.batclient.ui.BatGauge;
+import biz.noorlander.batclient.utils.Attribute;
 import biz.noorlander.batclient.utils.AttributedMessageBuilder;
+import biz.noorlander.batclient.utils.ParsedResultUtil;
+import com.google.common.collect.Lists;
 import com.mythicscape.batclient.interfaces.ClientGUI;
+import com.mythicscape.batclient.interfaces.ParsedResult;
 
 import java.awt.*;
+import java.awt.font.TextAttribute;
 import java.util.List;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -15,6 +20,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class AnimistHandler extends AbstractWindowedHandler {
+    private boolean soulListSparse = true;
 
     private BatGauge animistHpBar;
 
@@ -69,6 +75,7 @@ public class AnimistHandler extends AbstractWindowedHandler {
 		loadQualityColors();
 		buildSoulPatterns();
 		resetSoulsAndStatistics();
+		initSoulPanel();
 	}
 
 	public void initSoulPanel() {
@@ -197,6 +204,102 @@ public class AnimistHandler extends AbstractWindowedHandler {
         saveWindowsConfig();
     }
 
+    @Override
+    public ParsedResult handleOutputTriggers(ParsedResult parsedResult) {
+        String text = parsedResult.getStrippedText().trim();
+        if (text.startsWith("Your soul starts to follow you, as you ordered.")
+                || text.equals("You feel slightly better at fighting with your soul companion.")
+                || text.equals("You feel slightly better at fighting with a soul mount.")
+                || text.equals("The radiance bolts back, striking you. You smile proudly - you and your soul are one again.")
+                || text.startsWith("You chant, sing and dance, slapping yourself at the important parts.")
+        )
+        {
+            updateReputation();
+            return ParsedResultUtil.gag(parsedResult);
+        }
+        Matcher soulScore = getSoulScoreMatcher(text);
+        if (soulScore.find()) {
+            setSoulHealthPercent(Integer.parseInt(soulScore.group(1)));
+            return ParsedResultUtil.gag(parsedResult);
+        } else {
+            Matcher soulReputation = getSoulReputationMatcher(text);
+            if (soulReputation.find()) {
+                setSoulPointsAvailable(Integer.parseInt(soulReputation.group(3)));
+                return ParsedResultUtil.gag(parsedResult);
+            } else {
+                Matcher mountReputation = getMountReputationMatcher(text);
+                if (mountReputation.find()) {
+                    setMountReputation(mountReputation.group(1), mountReputation.group(2));
+                    return ParsedResultUtil.gag(parsedResult);
+                }
+            }
+        }
+        Matcher soul = getSoulListMatcher(text);
+        if (soul.find()) {
+            String race = soul.group(4);
+            registerSoulStatistic(race, soul.group(3), Integer.parseInt(soul.group(1)));
+            if (soulListSparse) {
+                return ParsedResultUtil.gag(parsedResult);
+            } else {
+                return AttributedMessageBuilder.create().append(String.format("%2s   ", soul.group(1)),
+                            Lists.newArrayList(Attribute.build(TextAttribute.FOREGROUND, Color.CYAN)))
+                        .append(String.format("%-10s   ", soul.group(3)))
+                        .append(String.format("%-10s   ", race), Lists.newArrayList(Attribute.fgColor(Color.WHITE)))
+                        .append(getAnimistSoul(race).toString(), Lists.newArrayList(Attribute.fgColor(Color.orange)))
+                        .build();
+            }
+        } else {
+            Matcher header = getSoulListHeaderMatcher(text);
+            if (header.find()) {
+                resetSoulsAndStatistics();
+                if (soulListSparse) {
+                    return ParsedResultUtil.gag(parsedResult);
+                } else {
+                    return AttributedMessageBuilder.create().append(String.format("%2s   ", "ID"), Lists.newArrayList(Attribute.fgColor(Color.CYAN)))
+                            .append(String.format("%-10s   ", "Quality"))
+                            .append(String.format("%-10s   ", "Race"), Lists.newArrayList(Attribute.fgColor(Color.WHITE)))
+                            .append("Stats", Lists.newArrayList(Attribute.fgColor(Color.orange)))
+                            .build();
+                }
+            } else {
+                Matcher report = getSoulReportMatcher(text);
+                if (report.find()) {
+                    if (soulListSparse) {
+                        reportSoulStatistics(Integer.parseInt(report.group(1)), Integer.parseInt(report.group(2)));
+                        return ParsedResultUtil.gag(parsedResult);
+                    } else {
+                        return parsedResult;
+                    }
+                } else {
+                    Matcher select = getSelectSoulMatcher(text);
+                    if (select.find()) {
+                        return AttributedMessageBuilder.create().append("Selected: ")
+                                .append(select.group(1))
+                                .append(" " + select.group(2) + " ")
+                                .append(getAnimistSoul(select.group(2)).toString(), Lists.newArrayList(Attribute.fgColor(Color.orange)))
+                                .build();
+                    } else {
+                        return null;
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public String handleCommandTriggers(String command) {
+        if ("animist souls long".equalsIgnoreCase(command)) {
+            this.soulListSparse = false;
+            return "animist souls";
+        } else if ("animist souls".equalsIgnoreCase(command)) {
+            this.soulListSparse = true;
+            return command;
+        } else if (command.startsWith("as ")) {
+            return selectSoul(command);
+        }
+        return null;
+    }
+
     public void registerSoulStatistic(String race, String quality, int id) {
         if ( ! soulStatistics.containsKey(race)) {
             soulStatistics.put(race, 1);
@@ -223,23 +326,24 @@ public class AnimistHandler extends AbstractWindowedHandler {
         sortedByCount.forEach( (race, count) -> {
             Set<Quality> distinctQualities = mySouls.stream().filter(soul -> race.equalsIgnoreCase(soul.getRace())).map(Soul::getQuality).collect(Collectors.toSet());
             AttributedMessageBuilder message = AttributedMessageBuilder.create()
-                     .append(String.format("%-13s", race), Optional.of(Color.WHITE), Optional.empty())
-                     .append(String.format("%2d   ", count), Optional.of(Color.CYAN), Optional.empty());
+                     .append(String.format("%-13s", race), Lists.newArrayList(Attribute.fgColor(Color.WHITE)))
+                     .append(String.format("%2d   ", count), Lists.newArrayList(Attribute.fgColor(Color.CYAN)));
             Arrays.stream(Quality.values()).forEach(quality -> addQualityIndicator(quality, message, distinctQualities));
             message.append("     ").append(getAnimistSoul(race).toString());
             reportToGui(message.build());
          });
         reportToGui(AttributedMessageBuilder.create().append(System.lineSeparator() + "-----< Free: ")
-                .append(String.format("%2d", max - current), Optional.of(Color.CYAN), Optional.empty())
+                .append(String.format("%2d", max - current), Lists.newArrayList(Attribute.fgColor(Color.CYAN)))
                 .append(" >---------------------<")
-                .append(" Souls  ").append(String.format("%2d", current), Optional.of(Color.CYAN), Optional.empty())
-                .append(" of ").append(String.format("%-2d ", max), Optional.of(Color.CYAN), Optional.empty())
+                .append(" Souls  ").append(String.format("%2d", current), Lists.newArrayList(Attribute.fgColor(Color.CYAN)))
+                .append(" of ").append(String.format("%-2d ", max), Lists.newArrayList(Attribute.fgColor(Color.CYAN)))
                 .append("  >---").build());
     }
 
     private void addQualityIndicator(Quality quality, AttributedMessageBuilder message, Set<Quality> distinctQualities) {
         if (distinctQualities.contains(quality)) {
-            message.append(" " + quality.name().substring(0,1) + " ", Optional.of(Color.BLACK), Optional.of(QUALITY_COLOR_MAP.get(quality)));
+            message.append(" " + quality.name().substring(0,1) + " ",
+                    Lists.newArrayList(Attribute.fgColor(Color.BLACK),Attribute.bgColor(QUALITY_COLOR_MAP.get(quality))));
         } else {
             message.append("   ");
         }
@@ -262,12 +366,12 @@ public class AnimistHandler extends AbstractWindowedHandler {
                 return "animist select " + match.get().getId() + ";;cast 'animal aspect' " + player
                         + ";;@party report Animal aspect (" + getAnimistSoul(race).toString() + ") -> " + player;
             } else {
-                reportToGui(AttributedMessageBuilder.create().append("ERROR! ", Optional.of(Color.RED), Optional.empty())
+                reportToGui(AttributedMessageBuilder.create().append("ERROR! ", Lists.newArrayList(Attribute.fgColor(Color.RED)))
                         .append(" Could not find race '" + race + "' with quality '" + optionalQuality + "'").build());
                 return "";
             }
         } else {
-            reportToGui(AttributedMessageBuilder.create().append("ERROR! ", Optional.of(Color.RED), Optional.empty())
+            reportToGui(AttributedMessageBuilder.create().append("ERROR! ", Lists.newArrayList(Attribute.fgColor(Color.RED)))
             .append(" Usage: as <animal> <player> [<quality>]").build());
             return "";
         }

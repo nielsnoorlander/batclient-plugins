@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Color;
 import java.awt.font.TextAttribute;
-import java.util.Optional;
 
+import com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
 
 import com.mythicscape.batclient.interfaces.ParsedAttribute;
@@ -23,7 +23,7 @@ class AttributedMessageBuilderTest {
 
     @Test
     void testSingleAttributeOnly() {
-        ParsedResult result = AttributedMessageBuilder.create().append("test", Optional.of(Color.GREEN), Optional.empty()).build();
+        ParsedResult result = AttributedMessageBuilder.create().append("test", Lists.newArrayList(Attribute.fgColor(Color.GREEN))).build();
         assertEquals("test" + System.lineSeparator(), result.getStrippedText());
         assertEquals(1, result.getAttributes().size());
         ParsedAttribute parsedAttribute = result.getAttributes().get(0);
@@ -35,7 +35,7 @@ class AttributedMessageBuilderTest {
 
     @Test
     void testTextPlusSingleAttributedText() {
-        ParsedResult result = AttributedMessageBuilder.create().append("bla ").append("test", Optional.empty(), Optional.of(Color.RED)).build();
+        ParsedResult result = AttributedMessageBuilder.create().append("bla ").append("test", Lists.newArrayList(Attribute.bgColor(Color.RED))).build();
         assertEquals("bla test" + System.lineSeparator(), result.getStrippedText());
         assertEquals(1, result.getAttributes().size());
         ParsedAttribute parsedAttribute = result.getAttributes().get(0);
@@ -49,7 +49,7 @@ class AttributedMessageBuilderTest {
     void testTextPlusDoubleAttributedText() {
         ParsedResult result = AttributedMessageBuilder.create()
                 .append("bla ")
-                .append("test", Optional.of(Color.GREEN), Optional.of(Color.RED))
+                .append("test", Lists.newArrayList(Attribute.fgColor(Color.GREEN), Attribute.bgColor(Color.RED)))
                 .append(" foo!")
                 .build();
         assertEquals("bla test foo!" + System.lineSeparator(), result.getStrippedText());
@@ -70,9 +70,9 @@ class AttributedMessageBuilderTest {
     void testMutlipleAttributedTexts() {
         ParsedResult result = AttributedMessageBuilder.create()
                 .append("bla ")
-                .append("test", Optional.of(Color.GREEN), Optional.of(Color.RED))
+                .append("test", Lists.newArrayList(Attribute.fgColor(Color.GREEN), Attribute.bgColor(Color.RED)))
                 .append(" foo ")
-                .append("test2", Optional.empty(), Optional.of(Color.BLUE))
+                .append("test2", Lists.newArrayList(Attribute.bgColor(Color.BLUE)))
                 .build();
         assertEquals("bla test foo test2" + System.lineSeparator(), result.getStrippedText());
         assertEquals(3, result.getAttributes().size());

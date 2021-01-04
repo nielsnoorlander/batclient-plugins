@@ -3,6 +3,7 @@ package biz.noorlander.batclient.utils;
 import java.awt.Color;
 import java.awt.font.TextAttribute;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import com.mythicscape.batclient.interfaces.ParsedAttribute;
@@ -26,12 +27,13 @@ public final class AttributedMessageBuilder {
         return this;
     }
 
-    public final AttributedMessageBuilder append(String text, Optional<Color> foreground, Optional<Color> background) {
+    public final AttributedMessageBuilder append(String text, List<Attribute> attrs) {
         int currentPos = message.length();
         message.append(text);
         int newPos = message.length();
-        foreground.ifPresent(color -> textAttributes.add(buildForegroundAttribute(color, currentPos, newPos)));
-        background.ifPresent(color -> textAttributes.add(buildBackgroundAttribute(color, currentPos, newPos)));
+        attrs.forEach(attr -> {
+            textAttributes.add(new ParsedAttribute(attr.getAttribute(), attr.getValue(), currentPos, newPos));
+        });
         return this;
     }
 
